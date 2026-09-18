@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { linenLabel, reasonLabel } from "@/lib/constants";
 import type { PullLogEntry } from "@/lib/types";
 import { Pill, formatWhen } from "@/app/components/ui";
-
-export const PAGE_SIZE = 100;
+import { LOG_PAGE_SIZE as PAGE_SIZE } from "@/lib/log-filters";
 
 type Tab = "all" | "weekly_restock" | "exceptions";
 

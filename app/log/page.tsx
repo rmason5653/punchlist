@@ -3,8 +3,8 @@ import { queryPullLog } from "@/lib/inventory";
 import { isAdmin } from "@/lib/auth-context";
 import { Container, PageHeader, SetupNotice } from "@/app/components/ui";
 import type { PullLogEntry } from "@/lib/types";
-import { parseLogParams } from "@/lib/log-filters";
-import LogClient, { PAGE_SIZE } from "./LogClient";
+import { LOG_PAGE_SIZE as PAGE_SIZE, parseLogParams } from "@/lib/log-filters";
+import LogClient from "./LogClient";
 
 export const dynamic = "force-dynamic";
 

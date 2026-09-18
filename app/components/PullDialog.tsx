@@ -314,11 +314,11 @@ export function PullModal({
 /** Button styles shared by every "log a pull" trigger. */
 export const PULL_TRIGGER = {
   primary:
-    "rounded-control bg-red px-4 py-2 font-display text-sm font-bold text-bone transition duration-150 ease-out hover:bg-red-hover active:brightness-95",
+    "min-h-10 rounded-control bg-red px-4 py-2 font-display text-sm font-bold text-bone transition duration-150 ease-out hover:bg-red-hover active:brightness-95",
   ghost:
-    "rounded-control border border-line-strong bg-surface-3 px-4 py-2 font-display text-sm font-bold text-ink-primary transition duration-150 ease-out hover:border-red hover:text-ink-primary",
+    "min-h-10 rounded-control border border-line-strong bg-surface-3 px-4 py-2 font-display text-sm font-bold text-ink-primary transition duration-150 ease-out hover:border-red hover:text-ink-primary",
   small:
-    "rounded-control border border-line-strong bg-surface-3 px-2.5 py-1 text-xs font-semibold text-ink-secondary transition duration-150 ease-out hover:border-red hover:text-ink-primary",
+    "min-h-9 rounded-control border border-line-strong bg-surface-3 px-3 py-1 text-xs font-semibold text-ink-secondary transition duration-150 ease-out hover:border-red hover:text-ink-primary",
 } as const;
 
 /**

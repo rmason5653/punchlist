@@ -167,7 +167,7 @@ function Grid({
                   onClick={() => onTap(u)}
                   disabled={busy}
                   aria-pressed={on}
-                  className={`tnum rounded-control border px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
+                  className={`tnum min-h-9 rounded-control border px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
                     on
                       ? "border-[rgba(31,138,76,.5)] bg-green-subtle text-state-ok"
                       : "border-line-strong bg-surface-3 text-ink-tertiary hover:border-red hover:text-ink-primary"

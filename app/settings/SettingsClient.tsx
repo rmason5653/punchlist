@@ -71,7 +71,7 @@ export default function SettingsClient({
   }
 
   const numField =
-    "tnum w-20 rounded-control border border-line-strong bg-surface-3 px-2.5 py-1.5 text-sm text-ink-primary outline-none focus:border-red";
+    "tnum min-h-9 w-20 rounded-control border border-line-strong bg-surface-3 px-2.5 py-1.5 text-sm text-ink-primary outline-none focus:border-red";
 
   return (
     <div className="space-y-6">
@@ -158,7 +158,7 @@ export default function SettingsClient({
               onChange={(e) =>
                 setLb((prev) => ({ ...prev, [p.item_name]: e.target.value }))
               }
-              className="tnum w-full rounded-control border border-line-strong bg-surface-3 px-2 py-1.5 text-sm text-ink-primary outline-none focus:border-red"
+              className="tnum min-h-9 w-full rounded-control border border-line-strong bg-surface-3 px-2 py-1.5 text-sm text-ink-primary outline-none focus:border-red"
             />
             <span className="tnum text-right font-display font-bold text-ink-primary">
               {p.par}

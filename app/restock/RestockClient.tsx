@@ -196,7 +196,7 @@ export default function RestockClient({
           type="button"
           onClick={restockAll}
           disabled={busy}
-          className="ml-auto rounded-control bg-red px-4 py-2 font-display text-sm font-bold text-bone transition duration-150 ease-out hover:bg-red-hover active:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+          className="ml-auto min-h-10 rounded-control bg-red px-4 py-2 font-display text-sm font-bold text-bone transition duration-150 ease-out hover:bg-red-hover active:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {allBusy
             ? `Restocking ${progress?.done ?? 0}/${progress?.total ?? runs.length}…`
@@ -282,7 +282,7 @@ export default function RestockClient({
                   type="button"
                   onClick={() => restockProperty(group.property, group.units)}
                   disabled={busy}
-                  className="rounded-control border border-line-strong bg-surface-3 px-3 py-1.5 font-display text-xs font-bold text-ink-secondary transition duration-150 ease-out hover:border-red hover:text-ink-primary active:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="min-h-9 rounded-control border border-line-strong bg-surface-3 px-3 py-1.5 font-display text-xs font-bold text-ink-secondary transition duration-150 ease-out hover:border-red hover:text-ink-primary active:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {busyProperty === group.property
                     ? "Refilling…"
@@ -312,7 +312,7 @@ export default function RestockClient({
                         type="button"
                         onClick={() => complete(run)}
                         disabled={busy}
-                        className="shrink-0 rounded-control bg-red px-3.5 py-2 font-display text-xs font-bold text-bone transition duration-150 ease-out hover:bg-red-hover active:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="min-h-10 shrink-0 rounded-control border border-line-strong bg-surface-3 px-3.5 py-2 font-display text-xs font-bold text-ink-primary transition duration-150 ease-out hover:border-red active:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {busyId === run.unit_id ? "Restocking…" : "Refill to par"}
                       </button>

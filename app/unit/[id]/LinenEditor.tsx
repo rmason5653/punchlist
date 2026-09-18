@@ -176,7 +176,7 @@ export default function LinenEditor({
   }
 
   const field =
-    "tnum w-16 rounded-control border border-line-strong bg-surface-3 px-2.5 py-1.5 text-sm text-ink-primary outline-none focus:border-red";
+    "tnum min-h-9 w-16 rounded-control border border-line-strong bg-surface-3 px-2.5 py-1.5 text-sm text-ink-primary outline-none focus:border-red";
 
   return (
     <section className="rounded-card border border-line bg-surface-2 shadow-e1">
@@ -233,7 +233,7 @@ export default function LinenEditor({
                 onClick={togglePullout}
                 disabled={busyKey === "__pullout__"}
                 aria-pressed={pullout}
-                className={`rounded-control border px-3 py-1.5 font-display text-xs font-bold transition disabled:opacity-50 ${
+                className={`min-h-9 rounded-control border px-3 py-1.5 font-display text-xs font-bold transition disabled:opacity-50 ${
                   pullout
                     ? "border-[rgba(31,138,76,.5)] bg-green-subtle text-state-ok"
                     : "border-line-strong bg-surface-3 text-ink-tertiary hover:text-ink-primary"
@@ -267,7 +267,7 @@ export default function LinenEditor({
                   type="button"
                   onClick={saveRollaways}
                   disabled={busyKey === "__rollaway__"}
-                  className="rounded-control bg-red px-3 py-1.5 font-display text-xs font-bold text-bone transition hover:bg-red-hover active:brightness-95 disabled:opacity-50"
+                  className="min-h-9 rounded-control bg-red px-3 py-1.5 font-display text-xs font-bold text-bone transition hover:bg-red-hover active:brightness-95 disabled:opacity-50"
                 >
                   {busyKey === "__rollaway__" ? "…" : "Save"}
                 </button>
@@ -306,7 +306,7 @@ export default function LinenEditor({
                       type="button"
                       onClick={() => savePar(l)}
                       disabled={busy}
-                      className="rounded-control bg-red px-3 py-1.5 font-display text-xs font-bold text-bone transition hover:bg-red-hover active:brightness-95 disabled:opacity-50"
+                      className="min-h-9 rounded-control bg-red px-3 py-1.5 font-display text-xs font-bold text-bone transition hover:bg-red-hover active:brightness-95 disabled:opacity-50"
                     >
                       {busy ? "…" : "Save"}
                     </button>
@@ -314,7 +314,7 @@ export default function LinenEditor({
                       type="button"
                       onClick={() => remove(l)}
                       disabled={busy}
-                      className="rounded-control border border-line-strong bg-surface-3 px-2.5 py-1.5 text-xs font-semibold text-ink-tertiary transition hover:border-red hover:text-state-bad disabled:opacity-50"
+                      className="min-h-9 rounded-control border border-line-strong bg-surface-3 px-2.5 py-1.5 text-xs font-semibold text-ink-tertiary transition hover:border-red hover:text-state-bad disabled:opacity-50"
                       aria-label={`Remove ${linenLabel(l.linen_type)}`}
                     >
                       Remove
@@ -365,7 +365,7 @@ export default function LinenEditor({
                 type="button"
                 onClick={add}
                 disabled={busyKey === "__add__"}
-                className="rounded-control bg-red px-3.5 py-2 font-display text-xs font-bold text-bone transition hover:bg-red-hover active:brightness-95 disabled:opacity-50"
+                className="min-h-9 rounded-control bg-red px-3.5 py-2 font-display text-xs font-bold text-bone transition hover:bg-red-hover active:brightness-95 disabled:opacity-50"
               >
                 {busyKey === "__add__" ? "Adding…" : "Add"}
               </button>

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import PullDialog from "./PullDialog";
+import { PULL_TRIGGER, PullModal } from "./PullDialog";
 import ThemeToggle from "./ThemeToggle";
 
 // admin: only managers/owner see it; cleaners get the focused set.
@@ -25,6 +25,10 @@ export default function NavBar({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  // The pull modal is owned here, not by the menu that holds its button: the
+  // phone menu unmounts when it closes, and a modal living inside it went
+  // with it — tapping "Log pull" on a phone closed the menu and nothing else.
+  const [pullOpen, setPullOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
 
   // Close the More dropdown on an outside click.
@@ -39,8 +43,9 @@ export default function NavBar({ isAdmin }: { isAdmin: boolean }) {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [moreOpen]);
 
-  // The login screen is its own full-bleed splash.
-  if (pathname === "/login") return null;
+  // The login and account-setup screens are their own full-bleed splash —
+  // nobody on them has a session to navigate with.
+  if (pathname === "/login" || pathname.startsWith("/join")) return null;
 
   const links = LINKS.filter((l) => !l.admin || isAdmin);
   const inlineLinks = links.filter((l) => !l.more);
@@ -52,6 +57,16 @@ export default function NavBar({ isAdmin }: { isAdmin: boolean }) {
   }
 
   const moreActive = moreLinks.some((l) => isActive(l.href));
+
+  // Logging out is a POST: a GET link that clears the session can be fired by
+  // link previews and prefetching.
+  const logoutForm = (cls: string) => (
+    <form method="post" action="/api/logout">
+      <button type="submit" className={cls} title="Log out">
+        Log out
+      </button>
+    </form>
+  );
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface-4/85 pt-[env(safe-area-inset-top)] backdrop-blur-[8px]">
@@ -153,16 +168,20 @@ export default function NavBar({ isAdmin }: { isAdmin: boolean }) {
           <ThemeToggle />
           {isAdmin && (
             <div className="hidden md:block">
-              <PullDialog label="Log pull" />
+              <button
+                type="button"
+                onClick={() => setPullOpen(true)}
+                className={PULL_TRIGGER.primary}
+              >
+                Log pull
+              </button>
             </div>
           )}
-          <a
-            href="/api/logout"
-            className="hidden shrink-0 rounded-control px-2 py-1.5 text-xs font-medium text-ink-tertiary transition hover:text-ink-primary md:inline"
-            title="Log out"
-          >
-            Log out
-          </a>
+          <div className="hidden md:block">
+            {logoutForm(
+              "shrink-0 rounded-control px-2 py-1.5 text-xs font-medium text-ink-tertiary transition hover:text-ink-primary",
+            )}
+          </div>
 
           {/* Mobile menu toggle */}
           <button
@@ -204,19 +223,28 @@ export default function NavBar({ isAdmin }: { isAdmin: boolean }) {
               </Link>
             ))}
             {isAdmin && (
-              <div className="px-1 py-2" onClick={() => setOpen(false)}>
-                <PullDialog label="Log pull" />
+              <div className="px-1 py-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    setPullOpen(true);
+                  }}
+                  className={PULL_TRIGGER.primary}
+                >
+                  Log pull
+                </button>
               </div>
             )}
-            <a
-              href="/api/logout"
-              className="block rounded-control px-3 py-2.5 text-sm font-medium text-ink-tertiary hover:text-ink-primary"
-            >
-              Log out
-            </a>
+            {logoutForm(
+              "block w-full rounded-control px-3 py-2.5 text-left text-sm font-medium text-ink-tertiary hover:text-ink-primary",
+            )}
           </nav>
         </div>
       )}
+
+      {/* Lives outside both menus so neither can unmount it. */}
+      {isAdmin && <PullModal open={pullOpen} onClose={() => setPullOpen(false)} />}
     </header>
   );
 }

@@ -3,6 +3,8 @@ import { Inter, Montserrat } from "next/font/google";
 import localFont from "next/font/local";
 import { cookies } from "next/headers";
 import NavBar from "@/app/components/NavBar";
+import { ToastProvider } from "@/app/components/Toast";
+import { ConfirmProvider } from "@/app/components/ConfirmSheet";
 import { getViewer } from "@/lib/auth-context";
 import "./globals.css";
 
@@ -63,8 +65,12 @@ export default async function RootLayout({
       className={`${inter.variable} ${montserrat.variable} ${americanCaptain.variable}`}
     >
       <body className="font-sans">
-        <NavBar isAdmin={isAdmin} />
-        {children}
+        <ToastProvider>
+          <ConfirmProvider>
+            <NavBar isAdmin={isAdmin} />
+            {children}
+          </ConfirmProvider>
+        </ToastProvider>
       </body>
     </html>
   );

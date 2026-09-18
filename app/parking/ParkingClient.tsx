@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pill, formatWhen } from "@/app/components/ui";
+import { useToast } from "@/app/components/Toast";
 import type { ParkingStatus } from "@/lib/types";
 
 interface ParkingUnit {
@@ -15,10 +16,12 @@ interface ParkingUnit {
 
 export default function ParkingClient({ units }: { units: ParkingUnit[] }) {
   const router = useRouter();
+  const toast = useToast();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
-  async function setStatus(id: string, status: "ok" | "missing") {
+  async function setStatus(u: ParkingUnit, status: "ok" | "missing") {
+    const id = u.unit_id;
     setBusyId(id);
     setError("");
     try {
@@ -31,6 +34,7 @@ export default function ParkingClient({ units }: { units: ParkingUnit[] }) {
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error || "Could not update.");
       }
+      toast(`${u.name}: pass marked ${status === "ok" ? "present" : "missing"}`);
       router.refresh();
     } catch (e) {
       setError((e as Error).message);
@@ -73,7 +77,7 @@ export default function ParkingClient({ units }: { units: ParkingUnit[] }) {
               <div className="flex gap-1.5">
                 <button
                   type="button"
-                  onClick={() => setStatus(u.unit_id, "ok")}
+                  onClick={() => setStatus(u, "ok")}
                   disabled={busyId === u.unit_id}
                   className="rounded-control border border-line-strong bg-surface-3 px-3 py-1.5 text-xs font-semibold text-ink-secondary transition hover:border-[rgba(31,138,76,.5)] hover:text-state-ok disabled:opacity-50"
                 >
@@ -81,7 +85,7 @@ export default function ParkingClient({ units }: { units: ParkingUnit[] }) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setStatus(u.unit_id, "missing")}
+                  onClick={() => setStatus(u, "missing")}
                   disabled={busyId === u.unit_id}
                   className="rounded-control border border-line-strong bg-surface-3 px-3 py-1.5 text-xs font-semibold text-ink-tertiary transition hover:border-red hover:text-state-bad disabled:opacity-50"
                 >

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { linenLabel } from "@/lib/constants";
 import type { Category, CentralReserveItem } from "@/lib/types";
 import { Pill } from "@/app/components/ui";
+import { useToast } from "@/app/components/Toast";
 
 function displayName(item: CentralReserveItem): string {
   return item.category === "linen" ? linenLabel(item.item_name) : item.item_name;
@@ -41,6 +42,7 @@ export default function CentralClient({ items }: { items: CentralReserveItem[] }
 
 function Row({ item, first }: { item: CentralReserveItem; first: boolean }) {
   const router = useRouter();
+  const toast = useToast();
   // Consumables: "count" (on-hand only; par is calculated). Linens: "edit"
   // (on-hand + par + reorder together, since linen targets are set by hand).
   const [mode, setMode] = useState<"none" | "count" | "edit">("none");
@@ -53,7 +55,7 @@ function Row({ item, first }: { item: CentralReserveItem; first: boolean }) {
   const low = item.quantity_on_hand <= item.reorder_point;
   const toPar = Math.max(0, item.par_level - item.quantity_on_hand);
 
-  async function send(body: Record<string, number>) {
+  async function send(body: Record<string, number>, done: string) {
     setBusy(true);
     setError("");
     try {
@@ -67,6 +69,7 @@ function Row({ item, first }: { item: CentralReserveItem; first: boolean }) {
         throw new Error(d.error || "Could not save.");
       }
       setMode("none");
+      toast(done);
       router.refresh();
     } catch (e) {
       setError((e as Error).message);
@@ -99,7 +102,7 @@ function Row({ item, first }: { item: CentralReserveItem; first: boolean }) {
       setError("Count must be zero or a positive whole number.");
       return;
     }
-    void send({ count: n });
+    void send({ count: n }, `${displayName(item)}: counted ${n}`);
   }
 
   // Save only the linen fields that actually changed (keeps the audit clean).
@@ -119,7 +122,12 @@ function Row({ item, first }: { item: CentralReserveItem; first: boolean }) {
       setMode("none");
       return;
     }
-    void send(body);
+    const what = [
+      body.count !== undefined ? `counted ${body.count}` : null,
+      body.par_level !== undefined ? `par ${body.par_level}` : null,
+      body.reorder_point !== undefined ? `reorder ${body.reorder_point}` : null,
+    ].filter(Boolean).join(", ");
+    void send(body, `${displayName(item)}: ${what}`);
   }
 
   const fieldCls =

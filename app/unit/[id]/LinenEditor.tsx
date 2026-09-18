@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LINEN_TYPES, linenLabel } from "@/lib/constants";
+import { useConfirm } from "@/app/components/ConfirmSheet";
+import { useToast } from "@/app/components/Toast";
 import type { LinenPar } from "@/lib/types";
 
 // Manager-only. Sets this unit's linen par and which sized bedding it carries.
@@ -20,6 +22,8 @@ export default function LinenEditor({
   rollawayBeds: number;
 }) {
   const router = useRouter();
+  const confirm = useConfirm();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -56,6 +60,7 @@ export default function LinenEditor({
     setError("");
     try {
       await post(l.linen_type, par);
+      toast(`${linenLabel(l.linen_type)} par set to ${par}`);
       router.refresh();
     } catch (e) {
       setError((e as Error).message);
@@ -65,6 +70,14 @@ export default function LinenEditor({
   }
 
   async function remove(l: LinenPar) {
+    const label = linenLabel(l.linen_type);
+    const ok = await confirm({
+      title: `Remove ${label} from this unit?`,
+      body: "Its par target and current count go with it. Add it again if you change your mind.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     setBusyKey(l.linen_type);
     setError("");
     try {
@@ -77,6 +90,7 @@ export default function LinenEditor({
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error || "Could not remove.");
       }
+      toast(`Removed ${label}`);
       router.refresh();
     } catch (e) {
       setError((e as Error).message);
@@ -100,6 +114,7 @@ export default function LinenEditor({
         throw new Error(d.error || "Could not save.");
       }
       setPullout(next);
+      toast(next ? "Marked: has a queen pullout couch" : "Marked: no pullout couch");
       router.refresh();
     } catch (e) {
       setError((e as Error).message);
@@ -126,6 +141,7 @@ export default function LinenEditor({
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error || "Could not save.");
       }
+      toast(`Twin rollaway beds: ${n}`);
       router.refresh();
     } catch (e) {
       setError((e as Error).message);
@@ -148,6 +164,7 @@ export default function LinenEditor({
     setError("");
     try {
       await post(newType, par);
+      toast(`Added ${linenLabel(newType)} · par ${par}`);
       setNewType("");
       setNewPar("");
       router.refresh();

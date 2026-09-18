@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { useToast } from "./Toast";
 import {
   REASONS_BY_CATEGORY,
   REASON_LABELS,
@@ -48,6 +49,7 @@ export function PullModal({
   prefill?: PullPrefill;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [opts, setOpts] = useState<Options | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -142,6 +144,9 @@ export function PullModal({
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error || "Could not log the pull.");
       }
+      const label = cat === "linen" ? linenLabel(item) : item;
+      const dest = opts?.units.find((u) => u.unit_id === unitId)?.name;
+      toast(`Logged ${quantity} × ${label}${dest ? ` → ${dest}` : ""}`);
       onClose();
       router.refresh();
     } catch (e) {

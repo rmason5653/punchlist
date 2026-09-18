@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import StaffSelect from "@/app/components/StaffSelect";
+import { useConfirm } from "@/app/components/ConfirmSheet";
+import { useToast } from "@/app/components/Toast";
 
 export interface RestockRun {
   unit_id: string;
@@ -37,6 +39,8 @@ export default function RestockClient({
   viewerName: string;
 }) {
   const router = useRouter();
+  const confirm = useConfirm();
+  const toast = useToast();
   const [staff, setStaff] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [busyProperty, setBusyProperty] = useState<string | null>(null);
@@ -93,24 +97,26 @@ export default function RestockClient({
     return true;
   }
 
-  async function restockUnit(unitId: string): Promise<void> {
+  /** Refills one unit; resolves to the number of pulls it logged. */
+  async function restockUnit(unitId: string): Promise<number> {
     const res = await fetch("/api/restock", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ staff_name: staff.trim(), unit_id: unitId }),
     });
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      throw new Error(d.error || "Could not complete the restock.");
-    }
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(d.error || "Could not complete the restock.");
+    return Number(d.restocked ?? 0);
   }
+  const pulls = (n: number) => `${n} ${n === 1 ? "pull" : "pulls"} logged`;
 
   async function complete(run: RestockRun) {
     if (!requireStaff()) return;
     setBusyId(run.unit_id);
     setError("");
     try {
-      await restockUnit(run.unit_id);
+      const n = await restockUnit(run.unit_id);
+      toast(`${run.unit_name} refilled — ${pulls(n)}`);
       router.refresh();
     } catch (e) {
       setError((e as Error).message);
@@ -124,11 +130,13 @@ export default function RestockClient({
     setBusyProperty(property);
     setError("");
     let done = 0;
+    let logged = 0;
     try {
       for (const run of units) {
-        await restockUnit(run.unit_id);
+        logged += await restockUnit(run.unit_id);
         done += 1;
       }
+      toast(`${units.length} units refilled at ${property} — ${pulls(logged)}`);
       router.refresh();
     } catch (e) {
       setError(`${(e as Error).message} (${done}/${units.length} done at ${property})`);
@@ -141,22 +149,24 @@ export default function RestockClient({
     if (!requireStaff()) return;
     // Marks every unit done at once — guard it so an early tap can't claim a
     // run that hasn't physically happened yet.
-    if (
-      !window.confirm(
-        `Mark all ${runs.length} units refilled to par? Only do this after you've physically restocked them.`,
-      )
-    )
-      return;
+    const ok = await confirm({
+      title: `Mark all ${runs.length} units refilled to par?`,
+      body: "Only do this after you've physically restocked every closet on the list. Each unit's pulls are logged under your name.",
+      confirmLabel: `Refill all ${runs.length}`,
+    });
+    if (!ok) return;
     setAllBusy(true);
     setError("");
     let done = 0;
+    let logged = 0;
     try {
       for (const run of runs) {
         setProgress({ done, total: runs.length });
-        await restockUnit(run.unit_id);
+        logged += await restockUnit(run.unit_id);
         done += 1;
       }
       setProgress({ done, total: runs.length });
+      toast(`${runs.length} units refilled — ${pulls(logged)}`);
       router.refresh();
     } catch (e) {
       setError(`${(e as Error).message} (${done}/${runs.length} done)`);

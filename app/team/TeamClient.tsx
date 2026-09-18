@@ -4,9 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AppUser } from "@/lib/types";
 import { Pill } from "@/app/components/ui";
+import { useConfirm } from "@/app/components/ConfirmSheet";
+import { useToast } from "@/app/components/Toast";
 
 export default function TeamClient({ users }: { users: AppUser[] }) {
   const router = useRouter();
+  const confirmSheet = useConfirm();
+  const toast = useToast();
   const [origin, setOrigin] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -89,7 +93,8 @@ export default function TeamClient({ users }: { users: AppUser[] }) {
     setStatus(`Emailed ${u.name}.`);
   }
 
-  async function patch(id: string, body: Record<string, unknown>) {
+  async function patch(id: string, body: Record<string, unknown>, done?: string) {
+    setError("");
     const res = await fetch(`/api/users/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -100,7 +105,36 @@ export default function TeamClient({ users }: { users: AppUser[] }) {
       setError(d.error || "Update failed.");
       return;
     }
+    if (done) {
+      setStatus(done);
+      toast(done);
+    }
     router.refresh();
+  }
+
+  async function changeRole(u: AppUser) {
+    if (u.role === "cleaner") {
+      const ok = await confirmSheet({
+        title: `Make ${u.name} an admin?`,
+        body: "Admins see everything and can change stock, targets, and the team.",
+        confirmLabel: "Make admin",
+      });
+      if (!ok) return;
+      await patch(u.id, { role: "admin" }, `${u.name} is now an admin.`);
+    } else {
+      await patch(u.id, { role: "cleaner" }, `${u.name} is now a cleaner.`);
+    }
+  }
+
+  async function resetPassword(u: AppUser) {
+    const ok = await confirmSheet({
+      title: `Reset ${u.name}'s password?`,
+      body: "Their current password stops working right away. They'll set a new one from a fresh link — send it to them after.",
+      confirmLabel: "Reset password",
+      danger: true,
+    });
+    if (!ok) return;
+    await patch(u.id, { reset_password: true }, `Password cleared — send ${u.name} their new link.`);
   }
 
   function startEdit(u: AppUser) {
@@ -138,13 +172,21 @@ export default function TeamClient({ users }: { users: AppUser[] }) {
   }
 
   async function remove(u: AppUser) {
-    if (!confirm(`Remove ${u.name}? Their login link stops working.`)) return;
+    const ok = await confirmSheet({
+      title: `Remove ${u.name} from the team?`,
+      body: "Their login stops working. This can't be undone — disable them instead if they might be back.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
+    setError("");
     const res = await fetch(`/api/users/${u.id}`, { method: "DELETE" });
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
       setError(d.error || "Remove failed.");
       return;
     }
+    toast(`Removed ${u.name}`);
     router.refresh();
   }
 
@@ -333,21 +375,17 @@ export default function TeamClient({ users }: { users: AppUser[] }) {
                         Email now
                       </button>
                     )}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        patch(u.id, { role: u.role === "admin" ? "cleaner" : "admin" })
-                      }
-                      className={actionBtn}
-                    >
+                    <button type="button" onClick={() => changeRole(u)} className={actionBtn}>
                       Make {u.role === "admin" ? "cleaner" : "admin"}
                     </button>
                     <button
                       type="button"
                       onClick={() =>
-                        patch(u.id, {
-                          status: u.status === "disabled" ? "active" : "disabled",
-                        })
+                        patch(
+                          u.id,
+                          { status: u.status === "disabled" ? "active" : "disabled" },
+                          u.status === "disabled" ? `${u.name} can log in again.` : `${u.name} disabled — they can't log in.`,
+                        )
                       }
                       className={actionBtn}
                     >
@@ -355,14 +393,7 @@ export default function TeamClient({ users }: { users: AppUser[] }) {
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (
-                          confirm(
-                            `Reset ${u.name}'s password? Their current password stops working and they set a new one from the fresh link.`,
-                          )
-                        )
-                          patch(u.id, { reset_password: true });
-                      }}
+                      onClick={() => resetPassword(u)}
                       className={actionBtn}
                       title="Clear their password and issue a new setup link"
                     >

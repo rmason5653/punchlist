@@ -126,31 +126,11 @@ export default async function HomePage() {
           here showed "No units match" and four green zeros under the error. */}
       {loadError && <SetupNotice message={loadError} />}
 
-      {/* Find your unit — the cleaner's first and primary action. */}
-      {!loadError && (
-        <h2 className="mb-3 font-display text-lg font-bold text-ink-primary">
-          Find your unit
-          <span className="ml-2 text-sm font-medium text-ink-muted">
-            {units.length}
-          </span>
-        </h2>
-      )}
-
-      {loadError ? null : units.length === 0 ? (
-        <p className="text-sm text-ink-tertiary">
-          No units yet.
-          {process.env.NODE_ENV === "development" && (
-            <> Run <code>supabase/schema.sql</code> to seed the portfolio.</>
-          )}
-        </p>
-      ) : (
-        <UnitPicker units={summaries} />
-      )}
-
-      {/* Portfolio status — manager view. Cleaners never see it: every
-          card links to a page they can't open. */}
+      {/* Portfolio status — the manager's numbers, first. It used to sit
+          below all 63 unit cards (4,400px down on desktop, ten screens on a
+          phone). Cleaners never see it: every card links to a manager page. */}
       {admin && !loadError && (
-        <section className="mt-12 border-t border-line pt-8">
+        <section className="mb-10 border-b border-line pb-8">
           <h2 className="mb-4 font-display text-sm font-bold uppercase tracking-[0.06em] text-ink-secondary">
             Portfolio status
           </h2>
@@ -212,6 +192,28 @@ export default async function HomePage() {
           )}
         </section>
       )}
+
+      {/* Find your unit — the cleaner's first and primary action; second for a manager. */}
+      {!loadError && (
+        <h2 className="mb-3 font-display text-lg font-bold text-ink-primary">
+          Find your unit
+          <span className="ml-2 text-sm font-medium text-ink-muted">
+            {units.length}
+          </span>
+        </h2>
+      )}
+
+      {loadError ? null : units.length === 0 ? (
+        <p className="text-sm text-ink-tertiary">
+          No units yet.
+          {process.env.NODE_ENV === "development" && (
+            <> Run <code>supabase/schema.sql</code> to seed the portfolio.</>
+          )}
+        </p>
+      ) : (
+        <UnitPicker units={summaries} />
+      )}
+
     </Container>
   );
 }

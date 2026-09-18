@@ -122,23 +122,26 @@ export default async function HomePage() {
         </Link>
       </div>
 
-      {loadError && (
-        <div className="mb-6">
-          <SetupNotice message={loadError} />
-        </div>
-      )}
+      {/* Nothing loaded: say so and stop. Rendering the picker and the KPIs
+          here showed "No units match" and four green zeros under the error. */}
+      {loadError && <SetupNotice message={loadError} />}
 
       {/* Find your unit — the cleaner's first and primary action. */}
-      <h2 className="mb-3 font-display text-lg font-bold text-ink-primary">
-        Find your unit
-        <span className="ml-2 text-sm font-medium text-ink-muted">
-          {units.length}
-        </span>
-      </h2>
+      {!loadError && (
+        <h2 className="mb-3 font-display text-lg font-bold text-ink-primary">
+          Find your unit
+          <span className="ml-2 text-sm font-medium text-ink-muted">
+            {units.length}
+          </span>
+        </h2>
+      )}
 
-      {units.length === 0 && !loadError ? (
+      {loadError ? null : units.length === 0 ? (
         <p className="text-sm text-ink-tertiary">
-          No units yet. Run <code>supabase/schema.sql</code> to seed the portfolio.
+          No units yet.
+          {process.env.NODE_ENV === "development" && (
+            <> Run <code>supabase/schema.sql</code> to seed the portfolio.</>
+          )}
         </p>
       ) : (
         <UnitPicker units={summaries} />
@@ -146,7 +149,7 @@ export default async function HomePage() {
 
       {/* Portfolio status — manager view. Cleaners never see it: every
           card links to a page they can't open. */}
-      {admin && (
+      {admin && !loadError && (
         <section className="mt-12 border-t border-line pt-8">
           <h2 className="mb-4 font-display text-sm font-bold uppercase tracking-[0.06em] text-ink-secondary">
             Portfolio status

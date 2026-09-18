@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { friendlyError } from "@/lib/errors";
 import { getViewer } from "@/lib/auth-context";
 import { listActiveStaffNames } from "@/lib/users-db";
 import { getSupabase } from "@/lib/supabase";
@@ -57,6 +58,6 @@ export async function POST(req: Request) {
     if (error) throw new Error(error.message);
     return NextResponse.json({ ok: true, restocked: data ?? 0 });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    return NextResponse.json({ error: friendlyError(err) }, { status: 500 });
   }
 }

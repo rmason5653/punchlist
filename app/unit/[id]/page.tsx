@@ -17,10 +17,21 @@ export default async function UnitPage({
 }) {
   const { id } = await params;
 
+  // Look the unit up outside the try: notFound() works by throwing, and a
+  // catch-all around it turned every stale link into a "database" error.
+  let unit: Awaited<ReturnType<typeof getUnit>> = null;
   try {
-    const unit = await getUnit(id);
-    if (!unit) notFound();
+    unit = await getUnit(id);
+  } catch (err) {
+    return (
+      <Container>
+        <SetupNotice message={(err as Error).message} />
+      </Container>
+    );
+  }
+  if (!unit) notFound();
 
+  try {
     const [consumables, linens, staffNames, viewer] = await Promise.all([
       listConsumables(id),
       listLinens(id),

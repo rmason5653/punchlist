@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BUSINESS_TZ } from "@/lib/constants";
+import RetryButton from "./RetryButton";
 
 // Shared presentational pieces for the Mason v4 surface. Pure/server-safe.
 
@@ -159,17 +160,30 @@ export function EmptyState({
   );
 }
 
-/** Banner shown when Supabase is not configured / a read failed. */
+/** Shown when a page's data couldn't load. Calm and team-facing: what to do,
+ *  not what broke. The raw message and setup hints only appear in
+ *  development, where they're the useful part. */
 export function SetupNotice({ message }: { message: string }) {
+  const dev = process.env.NODE_ENV === "development";
   return (
     <div className="rounded-card border border-[rgba(226,6,2,.35)] bg-red-subtle p-5 text-sm text-ink-secondary">
-      <p className="font-display font-bold text-ink-primary">Can&apos;t reach the database</p>
-      <p className="mt-1">{message}</p>
-      <p className="mt-3 text-ink-tertiary">
-        Set <code className="text-ink-secondary">SUPABASE_URL</code> and{" "}
-        <code className="text-ink-secondary">SUPABASE_SERVICE_ROLE_KEY</code>, then
-        run <code className="text-ink-secondary">supabase/schema.sql</code>.
+      <p className="font-display font-bold text-ink-primary">
+        Par can&apos;t load this right now
       </p>
+      <p className="mt-1">
+        Give it a moment and try again. If it keeps happening, tell a manager.
+      </p>
+      <RetryButton />
+      {dev && (
+        <div className="mt-4 border-t border-[rgba(226,6,2,.2)] pt-3 text-xs text-ink-tertiary">
+          <p className="tnum break-words">{message}</p>
+          <p className="mt-1">
+            Set <code className="text-ink-secondary">SUPABASE_URL</code> and{" "}
+            <code className="text-ink-secondary">SUPABASE_SERVICE_ROLE_KEY</code>,
+            then run <code className="text-ink-secondary">supabase/schema.sql</code>.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

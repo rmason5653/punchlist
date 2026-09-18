@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { friendlyError } from "@/lib/errors";
 import { getSupabase } from "@/lib/supabase";
 import { getViewer } from "@/lib/auth-context";
 import { linenLabel } from "@/lib/constants";
@@ -74,6 +75,6 @@ export async function PATCH(
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    return NextResponse.json({ error: friendlyError(err) }, { status: 500 });
   }
 }

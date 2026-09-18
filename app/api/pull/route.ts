@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { friendlyError } from "@/lib/errors";
 import { getSupabase } from "@/lib/supabase";
 import { listCentralReserve, listUnits } from "@/lib/inventory";
 import { getViewer, isAdmin } from "@/lib/auth-context";
@@ -26,7 +27,7 @@ export async function GET() {
       viewer_name: viewer?.name ?? "",
     });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    return NextResponse.json({ error: friendlyError(err) }, { status: 500 });
   }
 }
 
@@ -68,6 +69,6 @@ export async function POST(req: Request) {
     if (error) throw new Error(error.message);
     return NextResponse.json({ ok: true });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    return NextResponse.json({ error: friendlyError(err) }, { status: 500 });
   }
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { friendlyError } from "@/lib/errors";
 import { isAdmin } from "@/lib/auth-context";
 import { createUser, listUsers } from "@/lib/users-db";
 import { emailConfigured, sendInviteEmail } from "@/lib/email";
@@ -11,7 +12,7 @@ export async function GET() {
   try {
     return NextResponse.json({ users: await listUsers() });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    return NextResponse.json({ error: friendlyError(err) }, { status: 500 });
   }
 }
 
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
     const msg = (err as Error).message;
     const friendly = /duplicate|unique/i.test(msg)
       ? "That phone number is already on the team."
-      : msg;
+      : friendlyError(err, "Couldn't add them. Give it a moment and try again.");
     return NextResponse.json({ error: friendly }, { status: 500 });
   }
 }

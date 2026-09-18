@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { friendlyError } from "@/lib/errors";
 import { getViewer } from "@/lib/auth-context";
 import { slackConfigured, sendSlack } from "@/lib/slack";
 import { buildDigest } from "@/lib/digest";
@@ -12,7 +13,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Admins only." }, { status: 403 });
   if (!slackConfigured())
     return NextResponse.json(
-      { ok: false, error: "Slack isn't set up yet (SLACK_WEBHOOK_URL)." },
+      { ok: false, error: "Slack isn't connected yet." },
       { status: 400 },
     );
 
@@ -22,6 +23,6 @@ export async function POST(req: Request) {
     await sendSlack(digest.slackText);
     return NextResponse.json({ ok: true });
   } catch (e) {
-    return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 });
+    return NextResponse.json({ ok: false, error: friendlyError(e) }, { status: 500 });
   }
 }

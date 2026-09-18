@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { friendlyError } from "@/lib/errors";
 import { getAuthUserByEmail, recordLogin } from "@/lib/users-db";
 import { verifyPassword } from "@/lib/passwords";
 import { SESSION_COOKIE, createSessionCookie } from "@/lib/users";
@@ -48,6 +49,6 @@ export async function POST(req: Request) {
     });
     return res;
   } catch (e) {
-    return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 });
+    return NextResponse.json({ ok: false, error: friendlyError(e, "Couldn't log you in right now. Try again in a moment.") }, { status: 500 });
   }
 }

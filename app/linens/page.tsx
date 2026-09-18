@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import { buildLinenIntegrity, listLinens, listUnits } from "@/lib/inventory";
+import { isAdmin } from "@/lib/auth-context";
 import { linenLabel } from "@/lib/constants";
 import {
   Container,
@@ -13,6 +15,9 @@ import type { UnitLinens } from "@/lib/inventory";
 export const dynamic = "force-dynamic";
 
 export default async function LinensPage() {
+  // Managers only. Middleware gates the path; this is the second lock.
+  if (!(await isAdmin())) redirect("/");
+
   let integrity: UnitLinens[] = [];
   let loadError: string | null = null;
 

@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import { listUnits } from "@/lib/inventory";
+import { isAdmin } from "@/lib/auth-context";
 import { Container, PageHeader, SetupNotice } from "@/app/components/ui";
 import type { Unit } from "@/lib/types";
 import ParkingClient from "./ParkingClient";
@@ -6,6 +8,9 @@ import ParkingClient from "./ParkingClient";
 export const dynamic = "force-dynamic";
 
 export default async function ParkingPage() {
+  // Managers only. Middleware gates the path; this is the second lock.
+  if (!(await isAdmin())) redirect("/");
+
   let units: Unit[] = [];
   let loadError: string | null = null;
 

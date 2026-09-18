@@ -1,14 +1,19 @@
 import { NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
+import { isAdmin } from "@/lib/auth-context";
 
 export const dynamic = "force-dynamic";
 
 // Callers: the Parking view's confirmation toggle, and the manager's bagged-
 // bedding controls (pullout couch, rollaway count). Each sends only its field.
+// All three are manager actions — a cleaner records parking through the clean
+// flow, which has its own route.
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  if (!(await isAdmin()))
+    return NextResponse.json({ error: "Managers only." }, { status: 403 });
   const { id } = await params;
   const body = await req.json().catch(() => ({}));
   const patch: Record<string, unknown> = {};

@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import { listCentralReserve } from "@/lib/inventory";
+import { isAdmin } from "@/lib/auth-context";
 import { Container, PageHeader, SetupNotice } from "@/app/components/ui";
 import type { CentralReserveItem } from "@/lib/types";
 import CentralClient from "./CentralClient";
@@ -6,6 +8,9 @@ import CentralClient from "./CentralClient";
 export const dynamic = "force-dynamic";
 
 export default async function CentralPage() {
+  // Managers only. Middleware gates the path; this is the second lock.
+  if (!(await isAdmin())) redirect("/");
+
   let items: CentralReserveItem[] = [];
   let loadError: string | null = null;
 

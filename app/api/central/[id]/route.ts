@@ -61,16 +61,16 @@ export async function PATCH(
     const label = row.category === "linen" ? linenLabel(row.item_name) : row.item_name;
     const actor = viewer?.name ?? "Unknown";
     if (count !== null) {
-      await logAudit({ actor, action: "Counted central", item: label, detail: `${row.quantity_on_hand} → ${count}` });
+      await logAudit({ actor, action: "Counted Stockroom", item: label, detail: `${row.quantity_on_hand} → ${count}` });
     }
     if (add !== null) {
-      await logAudit({ actor, action: "Received central", item: label, detail: `+${add} (→ ${row.quantity_on_hand + add})` });
+      await logAudit({ actor, action: "Received in Stockroom", item: label, detail: `+${add} (→ ${row.quantity_on_hand + add})` });
     }
     if (reorder !== null || par !== null) {
       const parts: string[] = [];
       if (par !== null) parts.push(`par ${row.par_level} → ${par}`);
       if (reorder !== null) parts.push(`reorder ${row.reorder_point} → ${reorder}`);
-      await logAudit({ actor, action: "Central targets", item: label, detail: parts.join(", ") });
+      await logAudit({ actor, action: "Stockroom targets", item: label, detail: parts.join(", ") });
     }
 
     return NextResponse.json({ ok: true });

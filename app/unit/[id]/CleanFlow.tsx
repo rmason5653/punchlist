@@ -75,6 +75,9 @@ export default function CleanFlow({
   const [staff, setStaff] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // The record is on the phone, waiting for signal. Navigating away offline
+  // would fail too, so the flow is replaced by a note instead.
+  const [queued, setQueued] = useState(false);
 
   // Default to the remembered pick if it's still on the roster, otherwise the
   // logged-in user. Runs once on mount (client-only localStorage read).
@@ -170,11 +173,12 @@ export default function CleanFlow({
       // the link comes back, rather than making the cleaner stand there.
       if (isNetworkFailure(e)) {
         enqueue({ url, body: payload, label: `Clean for ${unit.name}` });
-        toast(`No signal — the clean for ${unit.name} is saved on this phone and will send when you're back online.`, {
+        toast(`No signal — the clean for ${unit.name} is saved on this phone.`, {
           tone: "neutral",
           duration: 8000,
         });
-        router.push("/");
+        setQueued(true);
+        setBusy(false);
         return;
       }
       setError((e as Error).message);
@@ -194,6 +198,21 @@ export default function CleanFlow({
           : "border-[rgba(226,6,2,.5)] bg-red-subtle text-state-bad"
         : "border-line-strong bg-surface-3 text-ink-tertiary hover:text-ink-primary"
     }`;
+
+  if (queued) {
+    return (
+      <div className="rounded-card border border-[rgba(245,184,0,.3)] bg-gold-subtle p-6 text-center">
+        <p className="font-display text-lg font-bold text-ink-primary">
+          Saved on this phone
+        </p>
+        <p className="mx-auto mt-2 max-w-md text-sm text-ink-secondary">
+          The clean for {unit.name} is recorded here and will send by itself the
+          moment you have signal again — you don&apos;t need to do anything. The
+          bar at the top of the screen shows when it&apos;s gone through.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 pb-28">

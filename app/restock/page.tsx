@@ -17,7 +17,6 @@ import RestockClient, {
   type PickItem,
   type RestockRun,
 } from "./RestockClient";
-import DigestButton from "./DigestButton";
 
 export const dynamic = "force-dynamic";
 
@@ -86,10 +85,9 @@ export default async function RestockPage() {
         <div className="flex flex-col items-start gap-2 sm:items-end">
           {runs.length > 0 && (
             <p className="text-sm text-ink-tertiary">
-              {runs.length} {runs.length === 1 ? "unit" : "units"} below reorder
+              {runs.length} {runs.length === 1 ? "unit" : "units"} below par
             </p>
           )}
-          <DigestButton />
         </div>
       </PageHeader>
 

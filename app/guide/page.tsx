@@ -42,16 +42,18 @@ function Step({
 }
 
 function Card({
+  id,
   title,
   kicker,
   children,
 }: {
+  id: string;
   title: string;
   kicker?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-card border border-line bg-surface-2 p-5 shadow-e1">
+    <section id={id} className="scroll-mt-20 rounded-card border border-line bg-surface-2 p-5 shadow-e1">
       {kicker && (
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
           {kicker}
@@ -75,7 +77,7 @@ function B({ children }: { children: React.ReactNode }) {
 export default function GuidePage() {
   return (
     <Container>
-      <PageHeader eyebrow="How to use Par" title="Cleaner guide">
+      <PageHeader eyebrow="How to use Par" title="How Par works">
         <Link
           href="/"
           className="rounded-control border border-line-strong bg-surface-3 px-3 py-2 text-sm font-semibold text-ink-secondary transition hover:border-red hover:text-ink-primary"
@@ -84,9 +86,20 @@ export default function GuidePage() {
         </Link>
       </PageHeader>
 
+      {/* Jump straight to the part you need — the page is a long one. */}
+      <nav aria-label="Sections" className="mb-5 flex flex-wrap gap-2">
+            <a href="#two-kinds-of-inventory-two-rules" className="rounded-control border border-line-strong bg-surface-3 px-3 py-1.5 text-xs font-semibold text-ink-secondary transition hover:border-red hover:text-ink-primary">Two kinds of inventory, two rules</a>
+            <a href="#the-30-second-clean-routine" className="rounded-control border border-line-strong bg-surface-3 px-3 py-1.5 text-xs font-semibold text-ink-secondary transition hover:border-red hover:text-ink-primary">The 30-second clean routine</a>
+            <a href="#some-bedding-is-bagged-in-the-closet" className="rounded-control border border-line-strong bg-surface-3 px-3 py-1.5 text-xs font-semibold text-ink-secondary transition hover:border-red hover:text-ink-primary">Some bedding is bagged in the closet</a>
+            <a href="#the-restock-run-refill-every-closet-in-o" className="rounded-control border border-line-strong bg-surface-3 px-3 py-1.5 text-xs font-semibold text-ink-secondary transition hover:border-red hover:text-ink-primary">The restock run — refill every closet in one trip</a>
+            <a href="#replace-a-damaged-or-missing-linen" className="rounded-control border border-line-strong bg-surface-3 px-3 py-1.5 text-xs font-semibold text-ink-secondary transition hover:border-red hover:text-ink-primary">Replace a damaged or missing linen</a>
+            <a href="#refill-a-unit-from-the-stockroom-right-n" className="rounded-control border border-line-strong bg-surface-3 px-3 py-1.5 text-xs font-semibold text-ink-secondary transition hover:border-red hover:text-ink-primary">Refill a unit from the Stockroom right now</a>
+            <a href="#what-the-colors-mean" className="rounded-control border border-line-strong bg-surface-3 px-3 py-1.5 text-xs font-semibold text-ink-secondary transition hover:border-red hover:text-ink-primary">What the colors mean</a>
+      </nav>
+
       <div className="space-y-4">
         {/* The big idea */}
-        <Card kicker="Start here" title="Two kinds of inventory, two rules">
+        <Card id="two-kinds-of-inventory-two-rules" kicker="Start here" title="Two kinds of inventory, two rules">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-control bg-surface-1 p-4">
               <p className="font-display text-sm font-bold text-state-warn">Consumables</p>
@@ -120,7 +133,7 @@ export default function GuidePage() {
         </Card>
 
         {/* Every clean */}
-        <Card kicker="Do this at every unit" title="The 30-second clean routine">
+        <Card id="the-30-second-clean-routine" kicker="Do this at every unit" title="The 30-second clean routine">
           <ol className="space-y-3">
             <Step n={1}>
               On <B>Home</B>, tap the <b>unit</b> you&apos;re cleaning.
@@ -151,7 +164,7 @@ export default function GuidePage() {
         </Card>
 
         {/* Pullout bedding */}
-        <Card kicker="Easy to miss" title="Some bedding is bagged in the closet">
+        <Card id="some-bedding-is-bagged-in-the-closet" kicker="Easy to miss" title="Some bedding is bagged in the closet">
           <p className="text-sm text-ink-secondary">
             A <b>pullout couch</b> and a <b>twin rollaway</b> keep their bedding
             in a linen bag in the closet — not made up on the bed. The unit page
@@ -186,7 +199,7 @@ export default function GuidePage() {
         </Card>
 
         {/* Weekly restock */}
-        <Card kicker="Once a week · Managers only" title="The restock run — refill every closet in one trip">
+        <Card id="the-restock-run-refill-every-closet-in-o" kicker="Once a week · Managers only" title="The restock run — refill every closet in one trip">
           <p className="mb-3 rounded-control border border-line-strong bg-surface-1 px-3 py-2 text-xs text-ink-muted">
             Cleaners don&apos;t run this one — flag what&apos;s low during the
             clean and a manager refills it on the weekly run.
@@ -218,7 +231,7 @@ export default function GuidePage() {
         </Card>
 
         {/* Damaged linen */}
-        <Card kicker="When a towel is bad" title="Replace a damaged or missing linen">
+        <Card id="replace-a-damaged-or-missing-linen" kicker="When a towel is bad" title="Replace a damaged or missing linen">
           <p className="mb-3 rounded-control border border-line-strong bg-surface-1 px-3 py-2 text-xs text-ink-muted">
             Cleaners: step 1 is yours. Flag it, finish the clean, and you&apos;re
             done — a manager handles the Stockroom half.
@@ -247,6 +260,7 @@ export default function GuidePage() {
 
         {/* Urgent consumable */}
         <Card
+          id="refill-a-unit-from-the-stockroom-right-n"
           kicker="When it can't wait · Managers only"
           title="Refill a unit from the Stockroom right now"
         >
@@ -274,7 +288,7 @@ export default function GuidePage() {
         </Card>
 
         {/* Colors */}
-        <Card kicker="Reading the app" title="What the colors mean">
+        <Card id="what-the-colors-mean" kicker="Reading the app" title="What the colors mean">
           <ul className="space-y-2 text-sm">
             <li className="flex items-center gap-3">
               <span className="inline-block h-3 w-3 rounded-full bg-gold" />

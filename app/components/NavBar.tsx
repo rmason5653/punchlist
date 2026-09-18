@@ -75,6 +75,21 @@ export default function NavBar({
 
   const moreActive = moreLinks.some((l) => isActive(l.href));
 
+  const mobileLink = (l: (typeof LINKS)[number]) => (
+    <Link
+      key={l.href}
+      href={l.href}
+      onClick={() => setOpen(false)}
+      className={`block min-h-11 rounded-control px-3 py-2.5 text-sm font-medium transition ${
+        isActive(l.href)
+          ? "bg-surface-2 text-ink-primary"
+          : "text-ink-secondary hover:text-ink-primary"
+      }`}
+    >
+      {l.label}
+    </Link>
+  );
+
   // Logging out is a POST: a GET link that clears the session can be fired by
   // link previews and prefetching.
   const logoutForm = (cls: string) => (
@@ -239,20 +254,15 @@ export default function NavBar({
       {open && (
         <div className="border-t border-line bg-surface-4/95 backdrop-blur-[8px] md:hidden">
           <nav className="mx-auto w-full max-w-6xl px-4 py-2 sm:px-6">
-            {links.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                onClick={() => setOpen(false)}
-                className={`block rounded-control px-3 py-2.5 text-sm font-medium transition ${
-                  isActive(l.href)
-                    ? "bg-surface-2 text-ink-primary"
-                    : "text-ink-secondary hover:text-ink-primary"
-                }`}
-              >
-                {l.label}
-              </Link>
-            ))}
+            {links.filter((l) => !l.admin).map(mobileLink)}
+            {isAdmin && (
+              <>
+                <p className="mt-2 border-t border-line px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
+                  Manager
+                </p>
+                {links.filter((l) => l.admin).map(mobileLink)}
+              </>
+            )}
             {isAdmin && (
               <div className="px-1 py-2">
                 <button

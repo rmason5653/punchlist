@@ -122,7 +122,7 @@ export default async function HomePage() {
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-muted">
             Mason Homes
           </p>
-          <h1 className="mt-0.5 font-punch text-4xl uppercase leading-none tracking-[0.02em] text-ink-primary">
+          <h1 className="mt-0.5 font-display text-4xl font-black leading-none tracking-[-0.02em] text-ink-primary">
             Par
           </h1>
         </div>

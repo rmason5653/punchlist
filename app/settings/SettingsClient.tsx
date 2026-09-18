@@ -131,10 +131,14 @@ export default function SettingsClient({
         />
       </div>
 
-      <p className="tnum max-w-2xl text-[11px] leading-relaxed text-ink-muted">
-        closet par = leave-behind × (turnovers + buffer) &nbsp;·&nbsp; reorder =
-        leave-behind × buffer &nbsp;·&nbsp; stockroom = weekly use × stockroom buffer
-      </p>
+      <dl className="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-1 rounded-card border border-line bg-surface-1 px-4 py-3 text-xs sm:grid-cols-[auto_1fr]">
+        <dt className="font-semibold uppercase tracking-[0.06em] text-ink-tertiary">Closet par</dt>
+        <dd className="tnum m-0 text-ink-secondary">leave-behind × (turnovers + buffer)</dd>
+        <dt className="font-semibold uppercase tracking-[0.06em] text-ink-tertiary">Reorder</dt>
+        <dd className="tnum m-0 text-ink-secondary">leave-behind × buffer</dd>
+        <dt className="font-semibold uppercase tracking-[0.06em] text-ink-tertiary">Stockroom</dt>
+        <dd className="tnum m-0 text-ink-secondary">one week of real pulls × Stockroom buffer</dd>
+      </dl>
 
       {/* Leave-behind + live calculated par. Compact columns on phones so the
           row never overflows; roomier from sm up. */}

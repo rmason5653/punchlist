@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { linenLabel } from "@/lib/constants";
 import StaffSelect from "@/app/components/StaffSelect";
+import { useConfirm } from "@/app/components/ConfirmSheet";
+import { useToast } from "@/app/components/Toast";
 import type { ConsumablePar, LinenPar, Unit } from "@/lib/types";
 
 const STAFF_KEY = "mason_inv_staff";
@@ -22,14 +24,22 @@ export default function CleanFlow({
   viewerName: string;
 }) {
   const router = useRouter();
+  const confirm = useConfirm();
+  const toast = useToast();
 
   const [parking, setParking] = useState<"ok" | "missing" | null>(
     unit.has_parking_pass ? (unit.parking_status === "missing" ? "missing" : "ok") : null,
   );
 
-  const [low, setLow] = useState<Set<string>>(
+  // Items already at or below reorder came flagged from an earlier clean and
+  // are waiting on the restock run. They stay flagged — only a manager's
+  // refill clears them — so they're shown, not offered as a toggle. Tapping
+  // one back to "OK" used to cancel its restock with nothing pulled.
+  const alreadyLow = useMemo(
     () => new Set(consumables.filter((c) => c.current_actual <= c.reorder_point).map((c) => c.id)),
+    [consumables],
   );
+  const [low, setLow] = useState<Set<string>>(() => new Set());
 
   const anyShort = useMemo(
     () => linens.some((l) => l.current_actual < l.par_count),
@@ -95,7 +105,34 @@ export default function CleanFlow({
     }));
   }
 
+  // One line per section, so the person sees what they're about to record.
+  function summary(): string {
+    const parts: string[] = [];
+    if (unit.has_parking_pass) parts.push(parking === "missing" ? "Parking pass missing" : "Parking pass present");
+    const flagged = consumables.filter((c) => low.has(c.id)).map((c) => c.item_name);
+    parts.push(
+      flagged.length === 0
+        ? "No new items flagged"
+        : `Flagged ${flagged.length}: ${flagged.join(", ")}`,
+    );
+    if (linensOk) parts.push("Linens all at par");
+    else {
+      const short = linens
+        .filter((l) => (linenActual[l.linen_type] ?? l.par_count) < l.par_count)
+        .map((l) => `${linenLabel(l.linen_type)} ${linenActual[l.linen_type] ?? l.par_count}/${l.par_count}`);
+      parts.push(short.length ? `Linens short: ${short.join(", ")}` : "Linens all at par");
+    }
+    parts.push(`Recorded as ${staff.trim() || "—"}`);
+    return parts.join(" · ");
+  }
+
   async function complete() {
+    const ok = await confirm({
+      title: `Record this clean for ${unit.name}?`,
+      body: summary(),
+      confirmLabel: "Record clean",
+    });
+    if (!ok) return;
     setBusy(true);
     setError("");
     try {
@@ -120,6 +157,7 @@ export default function CleanFlow({
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error || "Could not save the clean.");
       }
+      toast(`Clean recorded for ${unit.name}`);
       router.push("/");
       router.refresh();
     } catch (e) {
@@ -131,6 +169,15 @@ export default function CleanFlow({
   const section = "rounded-card border border-line bg-surface-2 p-5 shadow-e1";
   const stepBtn =
     "h-11 w-11 shrink-0 rounded-control border border-line-strong bg-surface-3 text-lg font-bold text-ink-secondary transition hover:border-red hover:text-ink-primary active:brightness-95 disabled:opacity-40";
+  // Mid-clean, one thumb: 44px minimum on every tap.
+  const bigToggle = (on: boolean, tone: "ok" | "bad") =>
+    `min-h-11 rounded-control border px-4 py-3 font-display text-sm font-bold transition active:brightness-95 ${
+      on
+        ? tone === "ok"
+          ? "border-[rgba(31,138,76,.5)] bg-green-subtle text-state-ok"
+          : "border-[rgba(226,6,2,.5)] bg-red-subtle text-state-bad"
+        : "border-line-strong bg-surface-3 text-ink-tertiary hover:text-ink-primary"
+    }`;
 
   return (
     <div className="space-y-4 pb-28">
@@ -152,11 +199,7 @@ export default function CleanFlow({
                 type="button"
                 onClick={() => setParking("ok")}
                 aria-pressed={parking === "ok"}
-                className={`rounded-control border px-4 py-3 font-display text-sm font-bold transition ${
-                  parking === "ok"
-                    ? "border-[rgba(31,138,76,.5)] bg-green-subtle text-state-ok"
-                    : "border-line-strong bg-surface-3 text-ink-tertiary hover:text-ink-primary"
-                }`}
+                className={bigToggle(parking === "ok", "ok")}
               >
                 Present
               </button>
@@ -164,11 +207,7 @@ export default function CleanFlow({
                 type="button"
                 onClick={() => setParking("missing")}
                 aria-pressed={parking === "missing"}
-                className={`rounded-control border px-4 py-3 font-display text-sm font-bold transition ${
-                  parking === "missing"
-                    ? "border-[rgba(226,6,2,.5)] bg-red-subtle text-state-bad"
-                    : "border-line-strong bg-surface-3 text-ink-tertiary hover:text-ink-primary"
-                }`}
+                className={bigToggle(parking === "missing", "bad")}
               >
                 Missing
               </button>
@@ -190,12 +229,13 @@ export default function CleanFlow({
           Consumables
         </h2>
         <p className="mt-1 text-xs text-ink-muted">
-          Put out the listed amount in the unit. Then tap{" "}
-          <b className="text-ink-secondary">Needs restock</b> on anything the
-          closet is down to its flag number or fewer.
+          Leave the listed amount in the unit. If the closet has its flag number
+          or fewer left <em>after</em> that, tap{" "}
+          <b className="text-ink-secondary">Needs restock</b>.
         </p>
         <ul className="mt-3 divide-y divide-[rgba(112,113,118,.14)]">
           {consumables.map((c) => {
+            const waiting = alreadyLow.has(c.id);
             const flagged = low.has(c.id);
             return (
               <li key={c.id} className="flex items-center justify-between gap-3 py-2.5">
@@ -204,7 +244,9 @@ export default function CleanFlow({
                     {c.item_name}
                   </div>
                   <div className="text-[11px] text-ink-muted">
-                    {c.fixed_par ? (
+                    {waiting ? (
+                      <>Flagged on an earlier clean · on the restock run</>
+                    ) : c.fixed_par ? (
                       // Bulk supply (e.g. a gallon of soap) — lives in the
                       // closet; flag when it's about to run out.
                       <>
@@ -213,24 +255,30 @@ export default function CleanFlow({
                       </>
                     ) : (
                       <>
-                        Put out <b className="text-ink-secondary">{c.leave_behind}</b>{" "}
-                        · flag if {c.reorder_point} or fewer left
+                        Leave <b className="text-ink-secondary">{c.leave_behind}</b>{" "}
+                        · flag if the closet has {c.reorder_point} or fewer after
                       </>
                     )}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => toggleLow(c.id)}
-                  aria-pressed={flagged}
-                  className={`shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.04em] transition ${
-                    flagged
-                      ? "border-[rgba(245,184,0,.4)] bg-gold-subtle text-state-warn"
-                      : "border-line-strong bg-surface-3 text-ink-tertiary hover:text-ink-primary"
-                  }`}
-                >
-                  {flagged ? "Needs restock" : "OK"}
-                </button>
+                {waiting ? (
+                  <span className="shrink-0 rounded-full border border-[rgba(245,184,0,.4)] bg-gold-subtle px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.04em] text-state-warn">
+                    Waiting on restock
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => toggleLow(c.id)}
+                    aria-pressed={flagged}
+                    className={`min-h-11 w-36 shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.04em] transition active:brightness-95 ${
+                      flagged
+                        ? "border-[rgba(245,184,0,.4)] bg-gold-subtle text-state-warn"
+                        : "border-line-strong bg-surface-3 text-ink-tertiary hover:text-ink-primary"
+                    }`}
+                  >
+                    {flagged ? "Needs restock" : "OK"}
+                  </button>
+                )}
               </li>
             );
           })}
@@ -270,11 +318,7 @@ export default function CleanFlow({
             type="button"
             onClick={() => setLinensOk(true)}
             aria-pressed={linensOk}
-            className={`rounded-control border px-4 py-3 font-display text-sm font-bold transition ${
-              linensOk
-                ? "border-[rgba(31,138,76,.5)] bg-green-subtle text-state-ok"
-                : "border-line-strong bg-surface-3 text-ink-tertiary hover:text-ink-primary"
-            }`}
+            className={bigToggle(linensOk, "ok")}
           >
             All match par
           </button>
@@ -282,11 +326,7 @@ export default function CleanFlow({
             type="button"
             onClick={() => setLinensOk(false)}
             aria-pressed={!linensOk}
-            className={`rounded-control border px-4 py-3 font-display text-sm font-bold transition ${
-              !linensOk
-                ? "border-[rgba(226,6,2,.5)] bg-red-subtle text-state-bad"
-                : "border-line-strong bg-surface-3 text-ink-tertiary hover:text-ink-primary"
-            }`}
+            className={bigToggle(!linensOk, "bad")}
           >
             Flag an issue
           </button>
@@ -339,8 +379,8 @@ export default function CleanFlow({
               );
             })}
             <p className="text-[11px] text-ink-muted">
-              A short count flags this unit for loss. Replace from the Stockroom
-              with a logged pull.
+              A short count flags this unit for loss. A manager replaces it from
+              the Stockroom with a logged pull.
             </p>
           </ul>
         )}
@@ -353,7 +393,7 @@ export default function CleanFlow({
             value={staff}
             onChange={setStaff}
             names={staffNames}
-            className="w-32 shrink-0 rounded-control border border-line-strong bg-surface-3 px-3 py-2.5 text-sm text-ink-primary outline-none focus:border-red sm:w-40"
+            className="min-h-11 w-32 shrink-0 rounded-control border border-line-strong bg-surface-3 px-3 py-2.5 text-sm text-ink-primary outline-none focus:border-red sm:w-40"
           />
           {error && (
             <p className="flex-1 truncate text-xs text-state-bad" role="alert">
@@ -364,7 +404,7 @@ export default function CleanFlow({
             type="button"
             onClick={complete}
             disabled={busy}
-            className="ml-auto rounded-control bg-red px-5 py-2.5 font-display text-sm font-bold text-bone transition duration-150 ease-out hover:bg-red-hover active:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+            className="ml-auto min-h-11 rounded-control bg-red px-5 py-2.5 font-display text-sm font-bold text-bone transition duration-150 ease-out hover:bg-red-hover active:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {busy ? "Saving…" : "Mark clean complete"}
           </button>

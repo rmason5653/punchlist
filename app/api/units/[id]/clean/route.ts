@@ -42,15 +42,18 @@ export async function POST(
     const { error: uErr } = await sb.from("units").update(unitPatch).eq("unit_id", id);
     if (uErr) throw new Error(uErr.message);
 
-    // 2. Consumables: low -> reset to reorder point, otherwise to par.
+    // 2. Consumables: a flag lowers the count to the reorder point. An item
+    //    that isn't flagged is left exactly as it was — cleaners never top a
+    //    closet up, so nothing they do can raise a count. (The old rule wrote
+    //    unflagged items as full, which meant tapping a pre-flagged item back
+    //    to "OK" quietly cancelled its restock with nothing pulled.)
     const cons = await listConsumables(id);
     const consById = new Map(cons.map((c) => [c.id, c]));
     const consUpdates = (body.consumables ?? [])
       .map((entry) => {
         const row = consById.get(entry.id);
-        if (!row) return null;
-        const target = entry.low ? row.reorder_point : row.closet_par;
-        return { id: row.id, current_actual: target };
+        if (!row || !entry.low || row.current_actual <= row.reorder_point) return null;
+        return { id: row.id, current_actual: row.reorder_point };
       })
       .filter((x): x is { id: string; current_actual: number } => x !== null);
 

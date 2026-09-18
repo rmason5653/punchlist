@@ -8,13 +8,15 @@ import ThemeToggle from "./ThemeToggle";
 
 // admin: only managers/owner see it; cleaners get the focused set.
 // more: kept off the main bar (under "More") so the daily-use tabs stay short.
+// moreForAdmin: on the bar for cleaners (it's one of their two tabs), under
+// More for managers, who have the audit trail there instead.
 const LINKS = [
   { href: "/", label: "Home", admin: false, more: false },
   { href: "/restock", label: "Restock", admin: true, more: false },
   { href: "/central", label: "Stockroom", admin: true, more: false },
   { href: "/linens", label: "Linens", admin: true, more: false },
-  { href: "/guide", label: "Guide", admin: false, more: false },
-  { href: "/log", label: "Pull log", admin: true, more: true },
+  { href: "/log", label: "Pull log", admin: true, more: false },
+  { href: "/guide", label: "Guide", admin: false, more: false, moreForAdmin: true },
   { href: "/activity", label: "Activity", admin: true, more: true },
   { href: "/parking", label: "Parking", admin: true, more: true },
   { href: "/team", label: "Team", admin: true, more: true },
@@ -48,8 +50,9 @@ export default function NavBar({ isAdmin }: { isAdmin: boolean }) {
   if (pathname === "/login" || pathname.startsWith("/join")) return null;
 
   const links = LINKS.filter((l) => !l.admin || isAdmin);
-  const inlineLinks = links.filter((l) => !l.more);
-  const moreLinks = links.filter((l) => l.more);
+  const underMore = (l: (typeof LINKS)[number]) => l.more || (!!l.moreForAdmin && isAdmin);
+  const inlineLinks = links.filter((l) => !underMore(l));
+  const moreLinks = links.filter(underMore);
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/" || pathname.startsWith("/unit");

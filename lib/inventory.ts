@@ -94,13 +94,38 @@ export async function listCentralReserve(): Promise<CentralReserveItem[]> {
   return (data ?? []) as CentralReserveItem[];
 }
 
-export async function listPullLog(limit = 200): Promise<PullLogEntry[]> {
+export interface PullLogQuery {
+  /** Matches item, person, or destination unit (case-insensitive substring). */
+  q?: string;
+  /** ISO instants; inclusive. */
+  from?: string;
+  to?: string;
+  offset?: number;
+  limit?: number;
+}
+
+/** The Stockroom audit trail, newest first, filtered and paged on the
+ *  server so the whole history stays reachable. */
+export async function queryPullLog(opts: PullLogQuery = {}): Promise<PullLogEntry[]> {
   const sb = getSupabase();
-  const { data, error } = await sb
+  const limit = Math.min(Math.max(opts.limit ?? 100, 1), 5000);
+  const offset = Math.max(opts.offset ?? 0, 0);
+  let q = sb
     .from("central_pull_log")
     .select("*")
-    .order("pulled_at", { ascending: false })
-    .limit(limit);
+    .order("pulled_at", { ascending: false });
+  const term = opts.q?.trim();
+  if (term) {
+    // PostgREST's or() splits on commas and parens; item, person and unit
+    // names never contain them, so drop them rather than quote them.
+    const pat = `*${term.replace(/[,()"]/g, "").replace(/\s+/g, "*")}*`;
+    q = q.or(
+      `item_name.ilike.${pat},staff_name.ilike.${pat},destination_name.ilike.${pat}`,
+    );
+  }
+  if (opts.from) q = q.gte("pulled_at", opts.from);
+  if (opts.to) q = q.lte("pulled_at", opts.to);
+  const { data, error } = await q.range(offset, offset + limit - 1);
   if (error) throw new Error(error.message);
   return (data ?? []) as PullLogEntry[];
 }

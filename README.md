@@ -18,24 +18,32 @@ in one place).
 Four tracked things:
 
 - **Consumables** — par per closet, placed out each turnover, refilled to par on
-  the weekly restock run. Hitting reorder flags the unit for restock.
+  the weekly restock run. A cleaner's flag lowers the closet to its reorder
+  point; only a manager's refill raises it. Anything below par is on the run.
 - **Linens** — a flat set that cycles on site. Actual below par signals a
   damaged/lost/stolen linen and triggers a logged replacement pull.
 - **Parking passes** — confirmed present each turnover, flagged when missing.
-- **Central pull log** — every item pulled from central: item, qty, unit,
-  reason, date, who. The anti-theft and reconciliation backbone.
+- **Stockroom pull log** — every item pulled from the Stockroom: item, qty,
+  unit, reason, date, who. The anti-theft and reconciliation backbone. It also
+  sets the Stockroom's reorder points: one week of what actually gets pulled.
 
 ## The screens
 
-| Screen | What it's for |
-| --- | --- |
-| **Home** | Every unit at a glance + portfolio KPIs. Tap a unit to clean it. |
-| **Unit** (clean flow) | Confirm parking, tap consumables now at/below reorder, confirm or flag linens, mark complete. Two taps, not a form. |
-| **Restock** (View 1) | The weekly work list: every unit below reorder and the exact quantity to bring each closet back to par. One tap refills a unit and logs each transfer. |
-| **Central** (View 2) | Bulk stock of every consumable and linen; flags anything at/below its reorder point. Receive stock and tune reorder points here. |
-| **Linens** (View 3) | Par vs actual linens for every unit. Anything below par lights up — loss detection. Replace a short linen with a logged pull in one tap. |
-| **Pull log** (View 4) | Running audit trail of every central pull, filterable by restock vs linen exception. |
-| **Parking** (View 5) | Which units have their passes accounted for; flag any missing. |
+Two roles. **Cleaners** see Home, their unit pages, and the guide. **Managers**
+see everything.
+
+| Screen | Who | What it's for |
+| --- | --- | --- |
+| **Home** | both | Cleaners: find your unit (recent units, pinned search, buildings that fold). Managers: portfolio KPIs and recent cleans first, then the units. |
+| **Unit** (clean flow) | both | Confirm parking, flag consumables that are low, confirm or flag linens, review, record. Items flagged on an earlier clean wait for the restock run; a clean recorded with no signal is saved on the phone and sent later. Managers also get linen par and a pull button here. |
+| **Restock** | managers | The weekly run: every closet item below par and how many to bring. One tap refills a unit with what the Stockroom actually has and logs each pull; anything short stays on the run. |
+| **Stockroom** | managers | Bulk stock. Reorder is one week of real pulls (last four weeks); par is that × the buffer in Settings. Receive a delivery or adjust a count on any row. |
+| **Linens** | managers | Par vs actual per unit, short units first. Replace a short linen with a logged pull in one tap. |
+| **Pull log** | managers | Every Stockroom pull: search by item, person or unit; date range; CSV export. |
+| **Parking** | managers | Which units have their passes; mark one missing or present. |
+| **Activity** | managers | Manual stock changes — counts, targets, linen edits — who and when. |
+| **Team** | managers | Add people, send setup links, roles, disable, reset, remove. |
+| **Settings** | managers | The three inputs behind calculated par, bagged-bedding flags per unit, and integrations (Slack summary, invite email). |
 
 ## Stack
 
@@ -72,6 +80,10 @@ See [`.env.example`](.env.example).
 | --- | --- | --- |
 | `SUPABASE_URL` | yes | Supabase project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | yes | Supabase service role key |
+| `APP_PASSWORD` | production | Turns the login gate on (blank = open, for local dev) |
+| `SESSION_SECRET` | production | Signs login cookies |
+| `RESEND_API_KEY`, `EMAIL_FROM` | no | Invite emails |
+| `SLACK_WEBHOOK_URL` | no | Daily summary and "post now" from Settings |
 
 ## Local development
 

@@ -199,52 +199,10 @@ begin
 end;
 $$;
 
--- Run the weekly restock for one unit: refill every below-reorder consumable to
--- par, drawing down central and logging each transfer. Returns the item count.
-create or replace function restock_unit(
-  p_staff text,
-  p_unit  uuid
-) returns int
-language plpgsql
-set search_path = public
-as $$
-declare
-  r           record;
-  v_needed    int;
-  v_count     int := 0;
-  v_unit_name text;
-begin
-  select name into v_unit_name from units where unit_id = p_unit;
-
-  for r in
-    select * from consumable_par
-     where unit_id = p_unit and current_actual <= reorder_point
-  loop
-    v_needed := r.closet_par - r.current_actual;
-    if v_needed <= 0 then
-      continue;
-    end if;
-
-    update central_reserve
-       set quantity_on_hand = greatest(0, quantity_on_hand - v_needed),
-           updated_at = now()
-     where item_name = r.item_name and category = 'consumable';
-
-    update consumable_par
-       set current_actual = closet_par, updated_at = now()
-     where id = r.id;
-
-    insert into central_pull_log
-      (staff_name, item_name, category, quantity, destination_unit_id, destination_name, reason)
-    values
-      (p_staff, r.item_name, 'consumable', v_needed, p_unit, v_unit_name, 'weekly_restock');
-
-    v_count := v_count + 1;
-  end loop;
-
-  return v_count;
-end;
-$$;
+-- (restock_unit used to live here. The weekly refill now runs in the app —
+-- app/api/restock/route.ts — so it can pull only what the Stockroom has and
+-- leave the remainder on the run. Existing databases keep the old function;
+-- nothing calls it.)
 
 -- Recompute calculated par from the inputs. Skips linens (stored) and bulk
 -- supplies (fixed_par = true — their par/reorder are set directly).

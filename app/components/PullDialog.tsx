@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useToast } from "./Toast";
+import { useConfirm } from "./ConfirmSheet";
+import StaffSelect from "./StaffSelect";
 import {
   REASONS_BY_CATEGORY,
   REASON_LABELS,
@@ -20,6 +22,7 @@ interface Options {
   units: Pick<Unit, "unit_id" | "name">[];
   items: Pick<CentralReserveItem, "item_name" | "category" | "quantity_on_hand">[];
   viewer_name?: string;
+  staff?: string[];
 }
 
 export interface PullPrefill {
@@ -50,7 +53,11 @@ export function PullModal({
 }) {
   const router = useRouter();
   const toast = useToast();
+  const confirm = useConfirm();
   const [opts, setOpts] = useState<Options | null>(null);
+  // Anything typed since the form loaded. A tap outside the sheet used to
+  // throw it all away with no warning.
+  const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -67,8 +74,8 @@ export function PullModal({
     setOpts(null);
     setError("");
     setBusy(false);
+    setDirty(false);
     setQty(prefill?.quantity ? String(prefill.quantity) : "1");
-    setStaff(localStorage.getItem(STAFF_KEY) ?? "");
     (async () => {
       try {
         const res = await fetch("/api/pull");
@@ -76,9 +83,17 @@ export function PullModal({
         const data: Options = await res.json();
         if (cancelled) return;
         setOpts(data);
-        // Who's pulling defaults to the logged-in user; the last typed name is
-        // only a fallback for off-roster sessions.
-        if (data.viewer_name) setStaff(data.viewer_name);
+        // Who's pulling defaults to the logged-in manager; the last pick is
+        // only a fallback for an off-roster session.
+        const roster = data.staff ?? [];
+        const remembered = localStorage.getItem(STAFF_KEY) ?? "";
+        setStaff(
+          data.viewer_name && roster.includes(data.viewer_name)
+            ? data.viewer_name
+            : roster.includes(remembered)
+              ? remembered
+              : data.viewer_name || "",
+        );
         const seedItem =
           prefill?.item_name && prefill.category
             ? `${prefill.category}::${prefill.item_name}`
@@ -107,14 +122,29 @@ export function PullModal({
     if (!allowed.includes(reason)) setReason(allowed[0]);
   }, [itemKey, category, reason]);
 
+  async function requestClose() {
+    if (dirty && !busy) {
+      const ok = await confirm({
+        title: "Discard this pull?",
+        body: "Nothing has been logged yet.",
+        confirmLabel: "Discard",
+        danger: true,
+      });
+      if (!ok) return;
+    }
+    onClose();
+  }
+
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      // If the discard confirm is up, Escape belongs to it.
+      if (e.key === "Escape" && !document.querySelector("[role=alertdialog]")) void requestClose();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, dirty, busy]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -167,7 +197,7 @@ export function PullModal({
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) void requestClose();
       }}
     >
       <div
@@ -182,7 +212,7 @@ export function PullModal({
           </h2>
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => void requestClose()}
             aria-label="Close"
             className="rounded-control px-2 py-1 text-ink-tertiary hover:text-ink-primary"
           >
@@ -204,13 +234,16 @@ export function PullModal({
         ) : (
           <form onSubmit={submit} className="mt-5 space-y-4">
             <div>
-              <label className={labelCls}>Your name</label>
-              <input
+              <label className={labelCls}>Who&apos;s pulling</label>
+              <StaffSelect
                 value={staff}
-                onChange={(e) => setStaff(e.target.value)}
-                placeholder="Who's pulling"
+                onChange={(v) => {
+                  setStaff(v);
+                  setDirty(true);
+                }}
+                names={opts.staff ?? []}
+                ariaLabel="Who's pulling"
                 className={field}
-                autoFocus={!staff}
               />
             </div>
 
@@ -218,7 +251,10 @@ export function PullModal({
               <label className={labelCls}>Item</label>
               <select
                 value={itemKey}
-                onChange={(e) => setItemKey(e.target.value)}
+                onChange={(e) => {
+                  setItemKey(e.target.value);
+                  setDirty(true);
+                }}
                 className={field}
               >
                 <optgroup label="Consumables">
@@ -255,7 +291,10 @@ export function PullModal({
                   type="number"
                   min={1}
                   value={qty}
-                  onChange={(e) => setQty(e.target.value)}
+                  onChange={(e) => {
+                    setQty(e.target.value);
+                    setDirty(true);
+                  }}
                   className={`${field} tnum`}
                 />
               </div>
@@ -263,7 +302,10 @@ export function PullModal({
                 <label className={labelCls}>Destination</label>
                 <select
                   value={unitId}
-                  onChange={(e) => setUnitId(e.target.value)}
+                  onChange={(e) => {
+                    setUnitId(e.target.value);
+                    setDirty(true);
+                  }}
                   className={field}
                 >
                   {opts.units.map((u) => (
@@ -279,7 +321,10 @@ export function PullModal({
               <label className={labelCls}>Reason</label>
               <select
                 value={reason}
-                onChange={(e) => setReason(e.target.value as PullReason)}
+                onChange={(e) => {
+                  setReason(e.target.value as PullReason);
+                  setDirty(true);
+                }}
                 className={field}
               >
                 {REASONS_BY_CATEGORY[category].map((r) => (

@@ -53,7 +53,8 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const isAdmin = (await getViewer())?.role === "admin";
+  const viewer = await getViewer();
+  const isAdmin = viewer?.role === "admin";
   // Theme persists in a cookie the server reads, so the right theme renders on
   // the first byte (no flash) and survives the app being closed/reopened.
   const theme =
@@ -67,7 +68,7 @@ export default async function RootLayout({
       <body className="font-sans">
         <ToastProvider>
           <ConfirmProvider>
-            <NavBar isAdmin={isAdmin} />
+            <NavBar isAdmin={isAdmin} viewerName={viewer?.name ?? ""} />
             {children}
           </ConfirmProvider>
         </ToastProvider>

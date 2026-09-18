@@ -23,7 +23,21 @@ const LINKS = [
   { href: "/settings", label: "Settings", admin: true, more: true },
 ];
 
-export default function NavBar({ isAdmin }: { isAdmin: boolean }) {
+export default function NavBar({
+  isAdmin,
+  viewerName,
+}: {
+  isAdmin: boolean;
+  viewerName: string;
+}) {
+  // Who's logged in, on every screen — attribution is the point of per-person
+  // logins, and a shared phone otherwise credits the wrong name.
+  const initials = viewerName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -180,6 +194,20 @@ export default function NavBar({ isAdmin }: { isAdmin: boolean }) {
               </button>
             </div>
           )}
+          {viewerName && (
+            <span
+              className="hidden items-center gap-2 pl-1 text-xs text-ink-tertiary md:inline-flex"
+              title={`Logged in as ${viewerName}`}
+            >
+              <span
+                aria-hidden="true"
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-line-strong bg-surface-3 font-display text-[11px] font-bold text-ink-primary"
+              >
+                {initials}
+              </span>
+              <span className="max-w-[8rem] truncate">{viewerName}</span>
+            </span>
+          )}
           <div className="hidden md:block">
             {logoutForm(
               "shrink-0 rounded-control px-2 py-1.5 text-xs font-medium text-ink-tertiary transition hover:text-ink-primary",
@@ -239,9 +267,26 @@ export default function NavBar({ isAdmin }: { isAdmin: boolean }) {
                 </button>
               </div>
             )}
-            {logoutForm(
-              "block w-full rounded-control px-3 py-2.5 text-left text-sm font-medium text-ink-tertiary hover:text-ink-primary",
-            )}
+            <div className="mt-1 flex items-center justify-between gap-3 border-t border-line px-3 pt-2">
+              {viewerName ? (
+                <span className="flex min-w-0 items-center gap-2 text-xs text-ink-tertiary">
+                  <span
+                    aria-hidden="true"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line-strong bg-surface-3 font-display text-[11px] font-bold text-ink-primary"
+                  >
+                    {initials}
+                  </span>
+                  <span className="truncate">
+                    Logged in as <b className="text-ink-secondary">{viewerName}</b>
+                  </span>
+                </span>
+              ) : (
+                <span />
+              )}
+              {logoutForm(
+                "min-h-9 shrink-0 rounded-control px-3 text-sm font-medium text-ink-tertiary hover:text-ink-primary",
+              )}
+            </div>
           </nav>
         </div>
       )}

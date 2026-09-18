@@ -143,6 +143,9 @@ function Grid({
         <span className="w-full text-[11px] text-ink-muted">{hint}</span>
       </div>
 
+      {groups.length === 0 && (
+        <p className="px-4 py-6 text-center text-sm text-ink-tertiary">No units yet.</p>
+      )}
       {groups.map(([property, list], idx) => (
         <div
           key={property}

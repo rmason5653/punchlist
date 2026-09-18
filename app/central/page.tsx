@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { listCentralReserve } from "@/lib/inventory";
 import { isAdmin } from "@/lib/auth-context";
-import { Container, PageHeader, SetupNotice } from "@/app/components/ui";
+import { Container, EmptyState, PageHeader, SetupNotice } from "@/app/components/ui";
 import type { CentralReserveItem } from "@/lib/types";
 import CentralClient from "./CentralClient";
 
@@ -34,13 +34,17 @@ export default async function CentralPage() {
             {low > 0 && <span className="text-state-warn">{low} below reorder</span>}
             {low > 0 && toPar > 0 && " · "}
             {toPar > 0 && <span className="text-ink-secondary">{toPar} to buy to par</span>}
-            {low === 0 && toPar === 0 && "All bulk stock at par"}
+            {items.length === 0
+              ? "Nothing here yet"
+              : low === 0 && toPar === 0 && "All bulk stock at par"}
           </p>
         )}
       </PageHeader>
 
       {loadError ? (
         <SetupNotice message={loadError} />
+      ) : items.length === 0 ? (
+        <EmptyState punch="Empty" line="No Stockroom items yet. They arrive with the portfolio." />
       ) : (
         <CentralClient items={items} />
       )}

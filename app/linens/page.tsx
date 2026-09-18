@@ -4,6 +4,7 @@ import { isAdmin } from "@/lib/auth-context";
 import { linenLabel } from "@/lib/constants";
 import {
   Container,
+  EmptyState,
   ParBar,
   PageHeader,
   Pill,
@@ -37,7 +38,9 @@ export default async function LinensPage() {
       <PageHeader eyebrow="Loss check · managers" title="Linen integrity">
         {!loadError && (
           <p className="text-sm text-ink-tertiary">
-            {shortUnits > 0 ? (
+            {integrity.length === 0 ? (
+              "No units yet"
+            ) : shortUnits > 0 ? (
               <span className="text-state-bad">{shortUnits} units below par</span>
             ) : (
               "Every unit at par"
@@ -48,6 +51,8 @@ export default async function LinensPage() {
 
       {loadError ? (
         <SetupNotice message={loadError} />
+      ) : integrity.length === 0 ? (
+        <EmptyState punch="No units" line="Linens appear here once the portfolio is loaded." />
       ) : (
         <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
           {sorted.map(({ unit, linens, short }) => {

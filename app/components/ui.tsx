@@ -151,8 +151,9 @@ export function EmptyState({
 }) {
   return (
     <div className="rounded-card border border-line bg-surface-2 p-12 text-center shadow-e1">
-      {/* Milestone moment — display punch (American Captain), used sparingly. */}
-      <p className="font-punch text-4xl uppercase tracking-[0.02em] text-state-ok">
+      {/* Milestone moment — display punch (American Captain), used sparingly.
+          Bone, per the kit: the display face is never set in a status colour. */}
+      <p className="font-punch text-5xl uppercase tracking-[0.02em] text-ink-primary">
         {punch}
       </p>
       <p className="mt-2 text-sm text-ink-tertiary">{line}</p>

@@ -3,6 +3,7 @@ import { friendlyError } from "@/lib/errors";
 import { getSupabase } from "@/lib/supabase";
 import { listCentralReserve, listUnits } from "@/lib/inventory";
 import { getViewer, isAdmin } from "@/lib/auth-context";
+import { listActiveStaffNames } from "@/lib/users-db";
 import { REASONS_BY_CATEGORY } from "@/lib/constants";
 import type { Category, PullReason } from "@/lib/types";
 
@@ -11,10 +12,12 @@ export const dynamic = "force-dynamic";
 // Options for the pull dialog: destination units + central items with stock.
 export async function GET() {
   try {
-    const [units, reserve, viewer] = await Promise.all([
+    const [units, reserve, viewer, staff] = await Promise.all([
       listUnits(),
       listCentralReserve(),
       getViewer(),
+      // Pulls are a manager's action, so the "who" list is the managers.
+      listActiveStaffNames("admin"),
     ]);
     return NextResponse.json({
       units: units.map((u) => ({ unit_id: u.unit_id, name: u.name })),
@@ -25,6 +28,7 @@ export async function GET() {
       })),
       // Who's logged in — the dialog defaults "who's pulling" to them.
       viewer_name: viewer?.name ?? "",
+      staff,
     });
   } catch (err) {
     return NextResponse.json({ error: friendlyError(err) }, { status: 500 });

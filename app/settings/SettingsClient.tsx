@@ -143,6 +143,11 @@ export default function SettingsClient({
           <span className="text-right">Par</span>
           <span className="text-right">Reorder</span>
         </div>
+        {preview.length === 0 && (
+          <p className="px-4 py-6 text-center text-sm text-ink-tertiary">
+            No consumables yet — they arrive with the portfolio.
+          </p>
+        )}
         {preview.map((p, idx) => (
           <div
             key={p.item_name}

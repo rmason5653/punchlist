@@ -7,6 +7,7 @@ import { needsRestock } from "@/lib/rules";
 import StaffSelect from "@/app/components/StaffSelect";
 import { useConfirm } from "@/app/components/ConfirmSheet";
 import { useToast } from "@/app/components/Toast";
+import { enqueue, isNetworkFailure } from "@/lib/queue";
 import type { ConsumablePar, LinenPar, Unit } from "@/lib/types";
 
 const STAFF_KEY = "mason_inv_staff";
@@ -137,23 +138,25 @@ export default function CleanFlow({
     if (!ok) return;
     setBusy(true);
     setError("");
+    const url = `/api/units/${unit.unit_id}/clean`;
+    const payload = {
+      staff_name: staff.trim() || undefined,
+      parking,
+      consumables: consumables.map((c) => ({ id: c.id, low: low.has(c.id) })),
+      linens_ok: linensOk,
+      linen_flags: linensOk
+        ? []
+        : linens.map((l) => ({
+            linen_type: l.linen_type,
+            actual: linenActual[l.linen_type] ?? l.par_count,
+          })),
+    };
     try {
       if (staff.trim()) localStorage.setItem(STAFF_KEY, staff.trim());
-      const res = await fetch(`/api/units/${unit.unit_id}/clean`, {
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          staff_name: staff.trim() || undefined,
-          parking,
-          consumables: consumables.map((c) => ({ id: c.id, low: low.has(c.id) })),
-          linens_ok: linensOk,
-          linen_flags: linensOk
-            ? []
-            : linens.map((l) => ({
-                linen_type: l.linen_type,
-                actual: linenActual[l.linen_type] ?? l.par_count,
-              })),
-        }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
@@ -163,6 +166,17 @@ export default function CleanFlow({
       router.push("/");
       router.refresh();
     } catch (e) {
+      // No signal in the unit: keep the record on the phone and send it when
+      // the link comes back, rather than making the cleaner stand there.
+      if (isNetworkFailure(e)) {
+        enqueue({ url, body: payload, label: `Clean for ${unit.name}` });
+        toast(`No signal — the clean for ${unit.name} is saved on this phone and will send when you're back online.`, {
+          tone: "neutral",
+          duration: 8000,
+        });
+        router.push("/");
+        return;
+      }
       setError((e as Error).message);
       setBusy(false);
     }

@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import NavBar from "@/app/components/NavBar";
 import { ToastProvider } from "@/app/components/Toast";
 import { ConfirmProvider } from "@/app/components/ConfirmSheet";
+import OfflineBanner from "@/app/components/OfflineBanner";
 import { getViewer } from "@/lib/auth-context";
 import "./globals.css";
 
@@ -69,6 +70,7 @@ export default async function RootLayout({
         <ToastProvider>
           <ConfirmProvider>
             <NavBar isAdmin={isAdmin} viewerName={viewer?.name ?? ""} />
+            <OfflineBanner />
             {children}
           </ConfirmProvider>
         </ToastProvider>

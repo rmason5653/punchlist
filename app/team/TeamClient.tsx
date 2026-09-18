@@ -4,9 +4,15 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AppUser } from "@/lib/types";
 import { Pill } from "@/app/components/ui";
+import Menu from "@/app/components/Menu";
 import { useConfirm } from "@/app/components/ConfirmSheet";
 import { useToast } from "@/app/components/Toast";
 
+/**
+ * The team roster. Each person shows the one or two things a manager does
+ * weekly — edit their details, send a setup link while they still need one —
+ * and keeps the yearly things (role, disable, reset, remove) behind a menu.
+ */
 export default function TeamClient({ users }: { users: AppUser[] }) {
   const router = useRouter();
   const confirmSheet = useConfirm();
@@ -19,7 +25,6 @@ export default function TeamClient({ users }: { users: AppUser[] }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
-  const [copied, setCopied] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
@@ -56,6 +61,7 @@ export default function TeamClient({ users }: { users: AppUser[] }) {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Could not add.");
       const e = email.trim();
+      const n = name.trim();
       setName("");
       setPhone("");
       setEmail("");
@@ -63,11 +69,11 @@ export default function TeamClient({ users }: { users: AppUser[] }) {
       if (e) {
         setStatus(
           data.emailed
-            ? `Invite emailed to ${e}.`
-            : `Added — email didn't send (${data.emailError || "email not set up yet"}). Send their link below.`,
+            ? `Added ${n} — invite emailed to ${e}.`
+            : `Added ${n} — email didn't send (${data.emailError || "email isn't connected"}). Send their link from their card.`,
         );
       } else {
-        setStatus("Added — send them their link below.");
+        setStatus(`Added ${n} — send them their link from their card.`);
       }
       router.refresh();
     } catch (e) {
@@ -90,7 +96,7 @@ export default function TeamClient({ users }: { users: AppUser[] }) {
       setError(d.error || "Email failed.");
       return;
     }
-    setStatus(`Emailed ${u.name}.`);
+    toast(`Emailed ${u.name} their link.`);
   }
 
   async function patch(id: string, body: Record<string, unknown>, done?: string) {
@@ -167,7 +173,7 @@ export default function TeamClient({ users }: { users: AppUser[] }) {
     }
     setEditingId(null);
     setError("");
-    setStatus(`Updated ${editName.trim()}.`);
+    toast(`Updated ${editName.trim()}.`);
     router.refresh();
   }
 
@@ -193,17 +199,16 @@ export default function TeamClient({ users }: { users: AppUser[] }) {
   async function copy(u: AppUser) {
     try {
       await navigator.clipboard.writeText(linkFor(u));
-      setCopied(u.id);
-      setTimeout(() => setCopied((c) => (c === u.id ? null : c)), 1500);
+      toast("Link copied");
     } catch {
       setError("Couldn't copy — long-press the link instead.");
     }
   }
 
   const field =
-    "rounded-control border border-line-strong bg-surface-3 px-3 py-2 text-sm text-ink-primary placeholder:text-ink-muted outline-none focus:border-red";
+    "min-h-9 rounded-control border border-line-strong bg-surface-3 px-3 py-2 text-sm text-ink-primary placeholder:text-ink-muted outline-none focus:border-red";
   const actionBtn =
-    "rounded-control border border-line-strong bg-surface-3 px-2.5 py-1 text-xs font-semibold text-ink-secondary transition hover:border-red hover:text-ink-primary";
+    "min-h-9 rounded-control border border-line-strong bg-surface-3 px-3 text-xs font-semibold text-ink-secondary transition hover:border-red hover:text-ink-primary";
 
   return (
     <div className="space-y-6">
@@ -222,12 +227,14 @@ export default function TeamClient({ users }: { users: AppUser[] }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Name"
+            aria-label="Name"
             className={`${field} min-w-[10rem] flex-1`}
           />
           <input
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="Phone (optional)"
+            aria-label="Phone"
             inputMode="tel"
             className={`${field} min-w-[9rem] flex-1`}
           />
@@ -235,17 +242,18 @@ export default function TeamClient({ users }: { users: AppUser[] }) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email (auto-sends the link)"
+            aria-label="Email"
             inputMode="email"
             className={`${field} min-w-[9rem] flex-1`}
           />
-          <div className="flex rounded-control bg-surface-1 p-0.5 text-xs font-medium">
+          <div className="flex rounded-control bg-surface-1 p-0.5 text-xs font-medium" role="group" aria-label="Role">
             {(["cleaner", "admin"] as const).map((r) => (
               <button
                 key={r}
                 type="button"
                 onClick={() => setRole(r)}
                 aria-pressed={role === r}
-                className={`rounded-[4px] px-3 py-1.5 capitalize transition ${
+                className={`min-h-8 rounded-[4px] px-3 capitalize transition ${
                   role === r
                     ? "bg-surface-4 text-ink-primary shadow-e1"
                     : "text-ink-tertiary hover:text-ink-secondary"
@@ -259,7 +267,7 @@ export default function TeamClient({ users }: { users: AppUser[] }) {
             type="button"
             onClick={add}
             disabled={busy}
-            className="rounded-control bg-red px-4 py-2 font-display text-sm font-bold text-bone transition hover:bg-red-hover active:brightness-95 disabled:opacity-50"
+            className="min-h-10 rounded-control bg-red px-4 py-2 font-display text-sm font-bold text-bone transition hover:bg-red-hover active:brightness-95 disabled:opacity-50"
           >
             {busy ? "Adding…" : "Add"}
           </button>
@@ -276,147 +284,146 @@ export default function TeamClient({ users }: { users: AppUser[] }) {
 
       {/* List */}
       <div className="space-y-3">
-        {users.map((u) => (
-          <div
-            key={u.id}
-            className="rounded-card border border-line bg-surface-2 p-4 shadow-e1"
-          >
-            {editingId === u.id ? (
-              /* Edit mode — change name, phone, email. */
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    placeholder="Name"
-                    className={`${field} min-w-[10rem] flex-1`}
-                  />
-                  <input
-                    value={editPhone}
-                    onChange={(e) => setEditPhone(e.target.value)}
-                    placeholder="Phone (optional)"
-                    inputMode="tel"
-                    className={`${field} min-w-[9rem] flex-1`}
-                  />
-                  <input
-                    value={editEmail}
-                    onChange={(e) => setEditEmail(e.target.value)}
-                    placeholder="Email (optional)"
-                    inputMode="email"
-                    className={`${field} min-w-[9rem] flex-1`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => saveEdit(u)}
-                    className="rounded-control bg-red px-4 py-2 font-display text-sm font-bold text-bone transition hover:bg-red-hover active:brightness-95"
-                  >
-                    Save
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingId(null);
-                      setError("");
-                    }}
-                    className={actionBtn}
-                  >
-                    Cancel
-                  </button>
-                </div>
-                {error && (
-                  <p className="mt-2 text-sm text-state-bad" role="alert">
-                    {error}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <>
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-display text-base font-bold text-ink-primary">
-                        {u.name}
-                      </span>
-                      {u.role === "admin" ? (
-                        <Pill tone="warn">Admin</Pill>
-                      ) : (
-                        <Pill tone="neutral">Cleaner</Pill>
-                      )}
-                      {u.status === "disabled" && <Pill tone="bad">Disabled</Pill>}
-                    </div>
-                    <div className="text-xs text-ink-muted">
-                      {[u.phone, u.email].filter(Boolean).join(" · ") || "no contact"}{" "}
-                      ·{" "}
-                      {u.password_set
-                        ? u.last_login_at
-                          ? "active"
-                          : "password set"
-                        : "setup pending"}
-                    </div>
+        {users.map((u) => {
+          const pending = !u.password_set;
+          const disabled = u.status === "disabled";
+          return (
+            <div
+              key={u.id}
+              className="rounded-card border border-line bg-surface-2 p-4 shadow-e1"
+            >
+              {editingId === u.id ? (
+                /* Edit mode — change name, phone, email. */
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="Name"
+                      aria-label="Name"
+                      className={`${field} min-w-[10rem] flex-1`}
+                    />
+                    <input
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      placeholder="Phone (optional)"
+                      aria-label="Phone"
+                      inputMode="tel"
+                      className={`${field} min-w-[9rem] flex-1`}
+                    />
+                    <input
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      placeholder="Email (optional)"
+                      aria-label="Email"
+                      inputMode="email"
+                      className={`${field} min-w-[9rem] flex-1`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => saveEdit(u)}
+                      className="min-h-9 rounded-control bg-red px-4 font-display text-sm font-bold text-bone transition hover:bg-red-hover active:brightness-95"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingId(null);
+                        setError("");
+                      }}
+                      className={actionBtn}
+                    >
+                      Cancel
+                    </button>
                   </div>
+                  {error && (
+                    <p className="mt-2 text-sm text-state-bad" role="alert">
+                      {error}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-display text-base font-bold text-ink-primary">
+                          {u.name}
+                        </span>
+                        {u.role === "admin" ? (
+                          <Pill tone="warn">Admin</Pill>
+                        ) : (
+                          <Pill tone="neutral">Cleaner</Pill>
+                        )}
+                        {disabled ? (
+                          <Pill tone="bad">Disabled</Pill>
+                        ) : pending ? (
+                          <Pill tone="warn">Setup pending</Pill>
+                        ) : u.last_login_at ? (
+                          <Pill tone="ok">Active</Pill>
+                        ) : (
+                          <Pill tone="neutral">Password set</Pill>
+                        )}
+                      </div>
+                      <div className="text-xs text-ink-muted">
+                        {[u.phone, u.email].filter(Boolean).join(" · ") || "no contact details"}
+                      </div>
+                    </div>
 
-                  <div className="flex flex-wrap gap-1.5">
-                    <button type="button" onClick={() => startEdit(u)} className={actionBtn}>
-                      Edit
-                    </button>
-                    <button type="button" onClick={() => copy(u)} className={actionBtn}>
-                      {copied === u.id ? "Copied!" : "Copy link"}
-                    </button>
-                    {u.phone && (
-                      <a
-                        href={`sms:${u.phone}?&body=${encodeURIComponent(inviteText(u))}`}
-                        className={actionBtn}
-                      >
-                        Text
-                      </a>
-                    )}
-                    {u.email && (
-                      <button type="button" onClick={() => sendEmail(u)} className={actionBtn}>
-                        Email now
+                    {/* The weekly things on show; the yearly things behind ⋯. */}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button type="button" onClick={() => startEdit(u)} className={actionBtn}>
+                        Edit
                       </button>
-                    )}
-                    <button type="button" onClick={() => changeRole(u)} className={actionBtn}>
-                      Make {u.role === "admin" ? "cleaner" : "admin"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        patch(
-                          u.id,
-                          { status: u.status === "disabled" ? "active" : "disabled" },
-                          u.status === "disabled" ? `${u.name} can log in again.` : `${u.name} disabled — they can't log in.`,
-                        )
-                      }
-                      className={actionBtn}
-                    >
-                      {u.status === "disabled" ? "Enable" : "Disable"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => resetPassword(u)}
-                      className={actionBtn}
-                      title="Clear their password and issue a new setup link"
-                    >
-                      Reset password
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => remove(u)}
-                      className="rounded-control border border-[rgba(226,6,2,.35)] bg-red-subtle px-2.5 py-1 text-xs font-semibold text-state-bad transition hover:border-red"
-                    >
-                      Remove
-                    </button>
+                      {pending && !disabled && (
+                        <Menu
+                          label="Send link ▾"
+                          ariaLabel={`Send ${u.name} their setup link`}
+                          items={[
+                            { label: "Copy link", onSelect: () => copy(u) },
+                            ...(u.phone
+                              ? [{ label: "Text it", href: `sms:${u.phone}?&body=${encodeURIComponent(inviteText(u))}` }]
+                              : []),
+                            ...(u.email ? [{ label: "Email it", onSelect: () => sendEmail(u) }] : []),
+                          ]}
+                        />
+                      )}
+                      <Menu
+                        label="⋯"
+                        ariaLabel={`More actions for ${u.name}`}
+                        items={[
+                          {
+                            label: u.role === "admin" ? "Make cleaner" : "Make admin",
+                            onSelect: () => changeRole(u),
+                          },
+                          {
+                            label: disabled ? "Enable login" : "Disable login",
+                            onSelect: () =>
+                              patch(
+                                u.id,
+                                { status: disabled ? "active" : "disabled" },
+                                disabled ? `${u.name} can log in again.` : `${u.name} disabled — they can't log in.`,
+                              ),
+                          },
+                          { label: "Reset password", onSelect: () => resetPassword(u) },
+                          { label: "Remove from team", onSelect: () => remove(u), danger: true },
+                        ]}
+                      />
+                    </div>
                   </div>
-                </div>
 
-                {/* The link itself, for long-press/copy on mobile. */}
-                <div className="mt-2 truncate rounded-control bg-surface-1 px-3 py-1.5 text-[11px] text-ink-muted">
-                  {origin ? linkFor(u) : "…"}
-                </div>
-              </>
-            )}
-          </div>
-        ))}
+                  {/* The link itself, only while they still need it. */}
+                  {pending && !disabled && (
+                    <div className="mt-2 truncate rounded-control bg-surface-1 px-3 py-1.5 text-[11px] text-ink-muted">
+                      {origin ? linkFor(u) : "…"}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })}
         {users.length === 0 && (
           <p className="text-sm text-ink-tertiary">
             No one added yet. Add yourself as an admin first.

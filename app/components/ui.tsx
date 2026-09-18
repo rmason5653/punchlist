@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { BUSINESS_TZ } from "@/lib/constants";
 
 // Shared presentational pieces for the Mason v4 surface. Pure/server-safe.
 
@@ -173,11 +174,13 @@ export function SetupNotice({ message }: { message: string }) {
   );
 }
 
-/** Compact timestamp for logs and confirmations. */
+/** Compact timestamp for logs and confirmations, in the team's zone. Same
+ *  text on the server and in the browser, so it never causes a hydration
+ *  mismatch. */
 export function formatWhen(iso: string | null): string {
   if (!iso) return "—";
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, {
+  return new Date(iso).toLocaleString("en-US", {
+    timeZone: BUSINESS_TZ,
     month: "short",
     day: "numeric",
     hour: "numeric",

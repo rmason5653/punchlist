@@ -1,7 +1,6 @@
 import { listStockAudit } from "@/lib/inventory";
-import { Container, EmptyState, PageHeader, SetupNotice } from "@/app/components/ui";
+import { Container, EmptyState, PageHeader, SetupNotice, formatWhen } from "@/app/components/ui";
 import type { StockAuditEntry } from "@/lib/types";
-import ActivityTime from "./ActivityTime";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +50,7 @@ export default async function ActivityPage() {
                 <span className="tnum text-sm text-ink-tertiary">{r.detail}</span>
               )}
               <span className="ml-auto whitespace-nowrap text-[11px] text-ink-muted">
-                {r.actor} · <ActivityTime iso={r.at} />
+                {r.actor} · {formatWhen(r.at)}
               </span>
             </div>
           ))}

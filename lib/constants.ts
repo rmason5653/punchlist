@@ -4,6 +4,14 @@
 
 import type { Category, PullReason } from "./types";
 
+/**
+ * Every timestamp in the app is shown in the team's own zone. Formatting with
+ * an explicit zone makes the server and the phone agree on the text, so pages
+ * don't re-render on load, and a manager travelling still reads "the clean
+ * happened at 3 PM our time". One constant to change if the business moves.
+ */
+export const BUSINESS_TZ = "America/New_York";
+
 // Towels carry no size. Sheets, quilts, and pillowcases come in King and Queen
 // — a unit only stocks the sizes its beds use, so these are added per unit in
 // the linen editor rather than seeded onto every unit.

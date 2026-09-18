@@ -1,4 +1,5 @@
 import { getSupabase } from "./supabase";
+import { needsRestock, restockNeeded } from "./rules";
 import type {
   CentralReserveItem,
   ConsumableItem,
@@ -250,7 +251,9 @@ export interface UnitRestock {
   items: { par: ConsumablePar; needed: number }[];
 }
 
-/** View 1 — every unit with at least one consumable at/below reorder. */
+/** The weekly run — every unit with a closet item below par, and how many
+ *  of each to bring. Includes remainders from a refill the Stockroom
+ *  couldn't cover in full. */
 export function buildRestockRun(
   units: Unit[],
   consumables: ConsumablePar[],
@@ -258,8 +261,8 @@ export function buildRestockRun(
   const byUnit = new Map<string, UnitRestock>();
   for (const u of units) byUnit.set(u.unit_id, { unit: u, items: [] });
   for (const c of consumables) {
-    if (c.current_actual <= c.reorder_point) {
-      const needed = c.closet_par - c.current_actual;
+    if (needsRestock(c)) {
+      const needed = restockNeeded(c);
       if (needed > 0) byUnit.get(c.unit_id)?.items.push({ par: c, needed });
     }
   }

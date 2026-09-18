@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { linenLabel } from "@/lib/constants";
+import { needsRestock } from "@/lib/rules";
 import StaffSelect from "@/app/components/StaffSelect";
 import { useConfirm } from "@/app/components/ConfirmSheet";
 import { useToast } from "@/app/components/Toast";
@@ -31,12 +32,13 @@ export default function CleanFlow({
     unit.has_parking_pass ? (unit.parking_status === "missing" ? "missing" : "ok") : null,
   );
 
-  // Items already at or below reorder came flagged from an earlier clean and
-  // are waiting on the restock run. They stay flagged — only a manager's
-  // refill clears them — so they're shown, not offered as a toggle. Tapping
-  // one back to "OK" used to cancel its restock with nothing pulled.
+  // Items already below par came flagged from an earlier clean (or were only
+  // partly refilled) and are waiting on the restock run. They stay that way —
+  // only a manager's refill clears them — so they're shown, not offered as a
+  // toggle. Tapping one back to "OK" used to cancel its restock with nothing
+  // pulled.
   const alreadyLow = useMemo(
-    () => new Set(consumables.filter((c) => c.current_actual <= c.reorder_point).map((c) => c.id)),
+    () => new Set(consumables.filter(needsRestock).map((c) => c.id)),
     [consumables],
   );
   const [low, setLow] = useState<Set<string>>(() => new Set());

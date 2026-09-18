@@ -3,12 +3,17 @@ import { friendlyError } from "@/lib/errors";
 import { getViewer } from "@/lib/auth-context";
 import { listActiveStaffNames } from "@/lib/users-db";
 import { getSupabase } from "@/lib/supabase";
+import { getUnit, listCentralReserve, listConsumables } from "@/lib/inventory";
+import { needsRestock, restockNeeded } from "@/lib/rules";
 
 export const dynamic = "force-dynamic";
 
-// Run the weekly restock for one unit: refill every below-reorder consumable to
-// par, drawing down central and logging each transfer (handled atomically by
-// the restock_unit RPC). Returns the number of items refilled.
+// Run the weekly restock for one unit. For each closet item below par, pull
+// what the Stockroom actually has — up to what's needed — draw the Stockroom
+// down by that much, and log the movement. If the Stockroom is short, the
+// closet is raised by what was delivered and the remainder stays on the run,
+// instead of logging a full pull that never physically happened.
+// Returns how many items moved and which are still short.
 export async function POST(req: Request) {
   // Managers only. Cleaners flag what's low during a clean; the refill itself
   // (and the stock drawdown it writes) is a manager action.
@@ -51,12 +56,51 @@ export async function POST(req: Request) {
 
   try {
     const sb = getSupabase();
-    const { data, error } = await sb.rpc("restock_unit", {
-      p_staff: staff,
-      p_unit: unitId,
-    });
-    if (error) throw new Error(error.message);
-    return NextResponse.json({ ok: true, restocked: data ?? 0 });
+    const [unit, cons, reserve] = await Promise.all([
+      getUnit(unitId),
+      listConsumables(unitId),
+      listCentralReserve(),
+    ]);
+    if (!unit) return NextResponse.json({ error: "Unit not found." }, { status: 404 });
+
+    const now = new Date().toISOString();
+    let restocked = 0;
+    const short: { item_name: string; by: number }[] = [];
+
+    for (const c of cons.filter(needsRestock)) {
+      const needed = restockNeeded(c);
+      const cr = reserve.find((r) => r.item_name === c.item_name && r.category === "consumable");
+      const available = Math.max(0, cr?.quantity_on_hand ?? 0);
+      const qty = Math.min(needed, available);
+      if (qty < needed) short.push({ item_name: c.item_name, by: needed - qty });
+      if (qty <= 0) continue;
+
+      if (cr) {
+        const { error } = await sb
+          .from("central_reserve")
+          .update({ quantity_on_hand: available - qty, updated_at: now })
+          .eq("id", cr.id);
+        if (error) throw new Error(error.message);
+      }
+      const { error: cErr } = await sb
+        .from("consumable_par")
+        .update({ current_actual: c.current_actual + qty, updated_at: now })
+        .eq("id", c.id);
+      if (cErr) throw new Error(cErr.message);
+      const { error: lErr } = await sb.from("central_pull_log").insert({
+        staff_name: staff,
+        item_name: c.item_name,
+        category: "consumable",
+        quantity: qty,
+        destination_unit_id: unitId,
+        destination_name: unit.name,
+        reason: "weekly_restock",
+      });
+      if (lErr) throw new Error(lErr.message);
+      restocked += 1;
+    }
+
+    return NextResponse.json({ ok: true, restocked, short });
   } catch (err) {
     return NextResponse.json({ error: friendlyError(err) }, { status: 500 });
   }

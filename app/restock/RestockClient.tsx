@@ -97,8 +97,9 @@ export default function RestockClient({
     return true;
   }
 
-  /** Refills one unit; resolves to the number of pulls it logged. */
-  async function restockUnit(unitId: string): Promise<number> {
+  /** Refills one unit; resolves to how many pulls it logged and what the
+   *  Stockroom couldn't cover (those stay on the run). */
+  async function restockUnit(unitId: string): Promise<{ pulls: number; short: string[] }> {
     const res = await fetch("/api/restock", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -106,17 +107,25 @@ export default function RestockClient({
     });
     const d = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(d.error || "Could not complete the restock.");
-    return Number(d.restocked ?? 0);
+    const short = ((d.short ?? []) as { item_name: string; by: number }[]).map(
+      (s) => `${s.item_name} short by ${s.by}`,
+    );
+    return { pulls: Number(d.restocked ?? 0), short };
   }
   const pulls = (n: number) => `${n} ${n === 1 ? "pull" : "pulls"} logged`;
+  const shortNote = (short: string[]) =>
+    short.length ? ` · ${short.join(", ")} — still on the run` : "";
 
   async function complete(run: RestockRun) {
     if (!requireStaff()) return;
     setBusyId(run.unit_id);
     setError("");
     try {
-      const n = await restockUnit(run.unit_id);
-      toast(`${run.unit_name} refilled — ${pulls(n)}`);
+      const r = await restockUnit(run.unit_id);
+      toast(`${run.unit_name} refilled — ${pulls(r.pulls)}${shortNote(r.short)}`, {
+        tone: r.short.length ? "neutral" : "ok",
+        duration: r.short.length ? 8000 : undefined,
+      });
       router.refresh();
     } catch (e) {
       setError((e as Error).message);
@@ -131,12 +140,18 @@ export default function RestockClient({
     setError("");
     let done = 0;
     let logged = 0;
+    const short: string[] = [];
     try {
       for (const run of units) {
-        logged += await restockUnit(run.unit_id);
+        const r = await restockUnit(run.unit_id);
+        logged += r.pulls;
+        short.push(...r.short.map((s) => `${run.unit_name}: ${s}`));
         done += 1;
       }
-      toast(`${units.length} units refilled at ${property} — ${pulls(logged)}`);
+      toast(`${units.length} units refilled at ${property} — ${pulls(logged)}${shortNote(short)}`, {
+        tone: short.length ? "neutral" : "ok",
+        duration: short.length ? 10000 : undefined,
+      });
       router.refresh();
     } catch (e) {
       setError(`${(e as Error).message} (${done}/${units.length} done at ${property})`);
@@ -159,14 +174,22 @@ export default function RestockClient({
     setError("");
     let done = 0;
     let logged = 0;
+    const short: string[] = [];
     try {
       for (const run of runs) {
         setProgress({ done, total: runs.length });
-        logged += await restockUnit(run.unit_id);
+        const r = await restockUnit(run.unit_id);
+        logged += r.pulls;
+        short.push(...r.short.map((s) => `${run.unit_name}: ${s}`));
         done += 1;
       }
       setProgress({ done, total: runs.length });
-      toast(`${runs.length} units refilled — ${pulls(logged)}`);
+      toast(
+        short.length
+          ? `${runs.length} units refilled — ${pulls(logged)} · ${short.length} ${short.length === 1 ? "item" : "items"} the Stockroom couldn't cover stay on the run`
+          : `${runs.length} units refilled — ${pulls(logged)}`,
+        { tone: short.length ? "neutral" : "ok", duration: short.length ? 10000 : undefined },
+      );
       router.refresh();
     } catch (e) {
       setError(`${(e as Error).message} (${done}/${runs.length} done)`);
@@ -249,7 +272,8 @@ export default function RestockClient({
           </ul>
           {pickList.some((p) => p.short) && (
             <p className="mt-3 text-xs text-state-bad">
-              The Stockroom can&apos;t fully cover the bold items — buy more bulk before the run.
+              The Stockroom can&apos;t fully cover the flagged items. A refill pulls what&apos;s
+              there and keeps the rest on the run — buy more bulk to clear it.
             </p>
           )}
         </div>

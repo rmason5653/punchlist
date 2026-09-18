@@ -9,6 +9,7 @@ import {
   type RecentClean,
 } from "@/lib/inventory";
 import type { ConsumablePar, LinenPar, Unit } from "@/lib/types";
+import { needsRestock } from "@/lib/rules";
 import {
   Container,
   SetupNotice,
@@ -33,7 +34,7 @@ function rollup(
   const map = new Map<string, UnitRollup>();
   for (const u of units) map.set(u.unit_id, { consLow: 0, linenShort: 0 });
   for (const c of cons) {
-    if (c.current_actual <= c.reorder_point) {
+    if (needsRestock(c)) {
       const r = map.get(c.unit_id);
       if (r) r.consLow += 1;
     }

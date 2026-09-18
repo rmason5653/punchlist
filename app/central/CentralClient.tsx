@@ -18,18 +18,28 @@ function displayName(item: CentralReserveItem): string {
  * same two verbs — Receive a delivery, or Adjust what's editable — so a
  * soap jug and a towel don't read the same and behave differently.
  */
-export default function CentralClient({ items }: { items: CentralReserveItem[] }) {
+export default function CentralClient({
+  items,
+  velocityWeeks,
+}: {
+  items: CentralReserveItem[];
+  velocityWeeks: number;
+}) {
   const sections: { key: string; label: string; note?: React.ReactNode; rows: CentralReserveItem[] }[] = [
     {
       key: "consumable",
       label: "Consumables",
       note: (
         <>
-          Par and reorder for these are calculated from{" "}
+          <b className="text-ink-secondary">Reorder</b> is one week of what&apos;s
+          actually been pulled (last {velocityWeeks} weeks);{" "}
+          <b className="text-ink-secondary">par</b> is that × the Stockroom buffer
+          in{" "}
           <Link href="/settings" className="text-ink-secondary underline underline-offset-2 hover:text-ink-primary">
             Settings
-          </Link>{" "}
-          — leave-behind × turnovers across every unit. Adjust only the count here.
+          </Link>
+          . An item with no pulls yet uses the estimate from leave-behind × turnovers.
+          Adjust only the count here.
         </>
       ),
       rows: items.filter((i) => i.category === "consumable" && !i.fixed_par),
@@ -186,6 +196,8 @@ function Row({ item, first }: { item: CentralReserveItem; first: boolean }) {
           <div className="text-sm font-medium text-ink-primary">{displayName(item)}</div>
           <div className="tnum text-[11px] text-ink-muted">
             par {item.par_level} · reorder {item.reorder_point}
+            {item.target_basis === "pulls" && ` · ~${item.weekly_use}/wk pulled`}
+            {item.target_basis === "calculated" && " · estimate, no pulls yet"}
           </div>
         </div>
 

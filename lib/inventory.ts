@@ -94,6 +94,69 @@ export async function listCentralReserve(): Promise<CentralReserveItem[]> {
   return (data ?? []) as CentralReserveItem[];
 }
 
+/** How many weeks of pull history set the Stockroom's targets. */
+export const VELOCITY_WEEKS = 4;
+
+/**
+ * Weekly use of each consumable, from what was actually pulled from the
+ * Stockroom over the last VELOCITY_WEEKS weeks. A log younger than the
+ * window is divided by the history it really has (never less than a week).
+ * Items with no pulls in the window are absent — the caller can't tell
+ * "unused" from "new", so it keeps the estimate for those.
+ */
+export async function weeklyPullVelocity(): Promise<Map<string, number>> {
+  const sb = getSupabase();
+  const since = new Date(Date.now() - VELOCITY_WEEKS * 7 * 86_400_000).toISOString();
+  const [recent, oldest] = await Promise.all([
+    sb
+      .from("central_pull_log")
+      .select("item_name, quantity")
+      .eq("category", "consumable")
+      .gte("pulled_at", since),
+    sb.from("central_pull_log").select("pulled_at").order("pulled_at", { ascending: true }).limit(1),
+  ]);
+  if (recent.error) throw new Error(recent.error.message);
+  if (oldest.error) throw new Error(oldest.error.message);
+  const firstAt = oldest.data?.[0]?.pulled_at
+    ? new Date((oldest.data[0] as { pulled_at: string }).pulled_at).getTime()
+    : Date.now();
+  const weeks = Math.max(1, Math.min(VELOCITY_WEEKS, (Date.now() - firstAt) / (7 * 86_400_000)));
+  const totals = new Map<string, number>();
+  for (const p of (recent.data ?? []) as { item_name: string; quantity: number }[]) {
+    totals.set(p.item_name, (totals.get(p.item_name) ?? 0) + p.quantity);
+  }
+  return new Map([...totals].map(([k, v]) => [k, v / weeks]));
+}
+
+/**
+ * The Stockroom with targets that mean something: for calculated consumables,
+ * reorder = one week of real pulls and par = that × the Stockroom buffer from
+ * Settings. The stored numbers assumed every unit turns over three times a
+ * week and is refilled in full, which flagged nearly everything Low. Linens
+ * and bulk supplies keep their hand-set targets; an item with no pull history
+ * keeps the estimate until it has one.
+ */
+export async function listCentralReserveWithTargets(): Promise<CentralReserveItem[]> {
+  const [reserve, velocity, settings] = await Promise.all([
+    listCentralReserve(),
+    weeklyPullVelocity(),
+    getSettings(),
+  ]);
+  return reserve.map((r) => {
+    if (r.category !== "consumable" || r.fixed_par) return { ...r, target_basis: "set" as const };
+    const v = velocity.get(r.item_name);
+    if (v === undefined) return { ...r, target_basis: "calculated" as const };
+    const weekly = Math.round(v);
+    return {
+      ...r,
+      reorder_point: weekly,
+      par_level: Math.round(weekly * settings.central_buffer),
+      target_basis: "pulls" as const,
+      weekly_use: weekly,
+    };
+  });
+}
+
 export interface PullLogQuery {
   /** Matches item, person, or destination unit (case-insensitive substring). */
   q?: string;

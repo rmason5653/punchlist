@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { listCentralReserve } from "@/lib/inventory";
+import { listCentralReserveWithTargets, VELOCITY_WEEKS } from "@/lib/inventory";
 import { isAdmin } from "@/lib/auth-context";
 import { Container, EmptyState, PageHeader, SetupNotice } from "@/app/components/ui";
 import type { CentralReserveItem } from "@/lib/types";
@@ -15,7 +15,7 @@ export default async function CentralPage() {
   let loadError: string | null = null;
 
   try {
-    items = await listCentralReserve();
+    items = await listCentralReserveWithTargets();
   } catch (err) {
     loadError = (err as Error).message;
   }
@@ -46,7 +46,7 @@ export default async function CentralPage() {
       ) : items.length === 0 ? (
         <EmptyState punch="Empty" line="No Stockroom items yet. They arrive with the portfolio." />
       ) : (
-        <CentralClient items={items} />
+        <CentralClient items={items} velocityWeeks={VELOCITY_WEEKS} />
       )}
     </Container>
   );

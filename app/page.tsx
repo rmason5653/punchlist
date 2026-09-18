@@ -2,7 +2,7 @@ import Link from "next/link";
 import {
   buildCounts,
   listConsumables,
-  listCentralReserve,
+  listCentralReserveWithTargets,
   listLinens,
   listRecentCleans,
   listUnits,
@@ -72,7 +72,7 @@ export default async function HomePage() {
       listLinens(),
     ]);
     if (admin) {
-      const reserve = await listCentralReserve();
+      const reserve = await listCentralReserveWithTargets();
       counts = buildCounts(units, cons, linens, reserve);
     }
   } catch (err) {

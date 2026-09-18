@@ -91,6 +91,12 @@ export interface CentralReserveItem {
   reorder_point: number;
   par_level: number; // target bulk level; buy up to this
   fixed_par: boolean; // bulk supply: targets set by hand, skipped by recalc
+  /** Where the targets came from (set by listCentralReserveWithTargets):
+   *  "pulls" = from real use over the last weeks, "calculated" = the
+   *  leave-behind × turnovers estimate (no pull history yet), "set" = by hand. */
+  target_basis?: "pulls" | "calculated" | "set";
+  /** Weekly use behind a "pulls" target. */
+  weekly_use?: number;
 }
 
 export interface PullLogEntry {

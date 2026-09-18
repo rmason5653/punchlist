@@ -2,7 +2,7 @@ import { linenLabel } from "./constants";
 import {
   buildLinenIntegrity,
   buildRestockRun,
-  listCentralReserve,
+  listCentralReserveWithTargets,
   listConsumables,
   listLinens,
   listUnits,
@@ -24,7 +24,7 @@ export async function buildDigest(origin: string): Promise<Digest> {
     listUnits(),
     listConsumables(),
     listLinens(),
-    listCentralReserve(),
+    listCentralReserveWithTargets(),
   ]);
 
   const restock = buildRestockRun(units, cons);

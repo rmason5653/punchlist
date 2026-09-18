@@ -6,6 +6,7 @@ import {
   listLinens,
   listRecentCleans,
   listUnits,
+  recentUnitIdsFor,
   type RecentClean,
 } from "@/lib/inventory";
 import type { ConsumablePar, LinenPar, Unit } from "@/lib/types";
@@ -17,7 +18,7 @@ import {
   formatWhen,
 } from "@/app/components/ui";
 import UnitPicker, { type UnitSummary } from "@/app/components/UnitPicker";
-import { isAdmin } from "@/lib/auth-context";
+import { getViewer } from "@/lib/auth-context";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +53,8 @@ export default async function HomePage() {
   // Portfolio status below is the manager view — every card on it links to a
   // page cleaners can't open. Resolve the role once, then skip both the
   // section and the reads that exist only to feed it.
-  const admin = await isAdmin();
+  const viewer = await getViewer();
+  const admin = viewer?.role === "admin";
 
   let units: Unit[] = [];
   let cons: ConsumablePar[] = [];
@@ -65,6 +67,7 @@ export default async function HomePage() {
   };
   let loadError: string | null = null;
   let recentCleans: RecentClean[] = [];
+  let recentIds: string[] = [];
 
   try {
     [units, cons, linens] = await Promise.all([
@@ -85,6 +88,14 @@ export default async function HomePage() {
       recentCleans = await listRecentCleans();
     } catch {
       // Non-critical — the dashboard still renders without the clean feed.
+    }
+  } else {
+    // A cleaner's own last few units, so the one they're walking to is a tap
+    // away instead of a search.
+    try {
+      recentIds = await recentUnitIdsFor(viewer?.name ?? "");
+    } catch {
+      // Non-critical.
     }
   }
 
@@ -212,7 +223,12 @@ export default async function HomePage() {
           )}
         </p>
       ) : (
-        <UnitPicker units={summaries} />
+        <UnitPicker
+          units={summaries}
+          recent={recentIds
+            .map((id) => summaries.find((s) => s.unit_id === id))
+            .filter((s): s is UnitSummary => !!s)}
+        />
       )}
 
     </Container>

@@ -242,6 +242,25 @@ export async function listRecentCleans(limit = 8): Promise<RecentClean[]> {
   });
 }
 
+/** Unit ids one person cleaned most recently, newest first, no repeats. */
+export async function recentUnitIdsFor(staffName: string, limit = 5): Promise<string[]> {
+  if (!staffName) return [];
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from("clean_log")
+    .select("unit_id, completed_at")
+    .eq("staff_name", staffName)
+    .order("completed_at", { ascending: false })
+    .limit(limit * 4);
+  if (error) throw new Error(error.message);
+  const seen = new Set<string>();
+  for (const r of (data ?? []) as { unit_id: string | null }[]) {
+    if (r.unit_id) seen.add(r.unit_id);
+    if (seen.size >= limit) break;
+  }
+  return [...seen];
+}
+
 // ---------------------------------------------------------------------------
 // Derived views (computed from the raw reads)
 // ---------------------------------------------------------------------------

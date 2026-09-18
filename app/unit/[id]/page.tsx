@@ -58,25 +58,7 @@ export default async function UnitPage({
               {unit.name}
             </h1>
           </div>
-          {admin && (
-            <PullDialog
-              label="Pull from Stockroom"
-              variant="ghost"
-              prefill={{ unit_id: unit.unit_id }}
-            />
-          )}
         </div>
-
-        {admin && (
-          <div className="mt-6">
-            <LinenEditor
-              unitId={unit.unit_id}
-              linens={linens}
-              hasPullout={unit.has_pullout}
-              rollawayBeds={unit.rollaway_beds}
-            />
-          </div>
-        )}
 
         <div className="mt-6">
           <CleanFlow
@@ -87,6 +69,30 @@ export default async function UnitPage({
             viewerName={viewer?.name ?? ""}
           />
         </div>
+
+        {/* The manager's setup tools come after the clean steps: a manager
+            cleaning a unit shouldn't scroll past them to start. The bottom
+            padding clears the clean flow's sticky bar. */}
+        {admin && (
+          <section className="-mt-16 space-y-3 pb-28">
+            <h2 className="font-display text-sm font-bold uppercase tracking-[0.06em] text-ink-secondary">
+              Manager tools
+            </h2>
+            <LinenEditor
+              unitId={unit.unit_id}
+              linens={linens}
+              hasPullout={unit.has_pullout}
+              rollawayBeds={unit.rollaway_beds}
+            />
+            <div>
+              <PullDialog
+                label="Pull from Stockroom"
+                variant="ghost"
+                prefill={{ unit_id: unit.unit_id }}
+              />
+            </div>
+          </section>
+        )}
       </Container>
     );
   } catch (err) {

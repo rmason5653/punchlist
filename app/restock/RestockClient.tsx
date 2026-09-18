@@ -209,12 +209,17 @@ export default function RestockClient({
         <label className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-tertiary">
           Restocking as
         </label>
-        <StaffSelect
-          value={staff}
-          onChange={setStaff}
-          names={staffNames}
-          className="w-40 rounded-control border border-line-strong bg-surface-3 px-3 py-2 text-sm text-ink-primary outline-none focus:border-red"
-        />
+        {staffNames.length > 1 ? (
+          <StaffSelect
+            value={staff}
+            onChange={setStaff}
+            names={staffNames}
+            className="min-h-10 w-40 rounded-control border border-line-strong bg-surface-3 px-3 py-2 text-sm text-ink-primary outline-none focus:border-red"
+          />
+        ) : (
+          // One manager on the roster: say who, don't offer a one-option menu.
+          <span className="text-sm font-semibold text-ink-primary">{staff || "—"}</span>
+        )}
         <button
           type="button"
           onClick={restockAll}

@@ -7,6 +7,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -75,15 +76,25 @@ export default function LoginPage() {
           inputMode="email"
           className={field}
         />
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Password"
-          aria-label="Password"
-          autoComplete="current-password"
-          className={field}
-        />
+        <div className="relative">
+          <input
+            type={showPw ? "text" : "password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+            aria-label="Password"
+            autoComplete="current-password"
+            className={`${field} pr-16`}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPw((s) => !s)}
+            aria-pressed={showPw}
+            className="absolute right-2 top-1/2 mt-1 -translate-y-1/2 rounded-control px-2 py-1 text-xs font-semibold text-ink-tertiary hover:text-ink-primary"
+          >
+            {showPw ? "Hide" : "Show"}
+          </button>
+        </div>
         {error && (
           <p className="mt-2 text-sm text-state-bad" role="alert">
             {error}

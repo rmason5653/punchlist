@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { Pill, formatWhen } from "./ui";
 
 export interface UnitSummary {
@@ -85,7 +85,7 @@ function UnitCard({ u }: { u: UnitSummary }) {
   return (
     <Link
       href={`/unit/${u.unit_id}`}
-      className="group rounded-card border border-line bg-surface-2 p-4 shadow-e1 transition duration-150 ease-out hover:-translate-y-px hover:border-line-strong hover:bg-surface-3 hover:shadow-e2"
+      className="group rounded-card border border-line bg-surface-2 p-4 shadow-e1 transition duration-150 ease-out hover:-translate-y-px hover:border-line-strong hover:bg-surface-3 hover:shadow-e2 active:translate-y-0 active:bg-surface-3 active:brightness-95"
     >
       <div className="flex items-start justify-between gap-2">
         <div>
@@ -98,9 +98,7 @@ function UnitCard({ u }: { u: UnitSummary }) {
               : `Parking: ${u.parking_pass_label}`}
           </div>
         </div>
-        <span className="text-ink-muted transition group-hover:text-ink-tertiary">
-          →
-        </span>
+        <OpeningMark />
       </div>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
@@ -114,5 +112,18 @@ function UnitCard({ u }: { u: UnitSummary }) {
         Last cleaned {formatWhen(u.last_cleaned_at)}
       </div>
     </Link>
+  );
+}
+
+/** The card's arrow, which turns into "Opening…" the moment it's tapped —
+ *  the next page's skeleton takes over from there. Must be a child of Link. */
+function OpeningMark() {
+  const { pending } = useLinkStatus();
+  return pending ? (
+    <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.04em] text-state-warn">
+      Opening…
+    </span>
+  ) : (
+    <span className="text-ink-muted transition group-hover:text-ink-tertiary">→</span>
   );
 }

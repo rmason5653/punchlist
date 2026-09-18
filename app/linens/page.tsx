@@ -34,7 +34,7 @@ export default async function LinensPage() {
 
   return (
     <Container>
-      <PageHeader eyebrow="View 3" title="Linen integrity">
+      <PageHeader eyebrow="Loss check · managers" title="Linen integrity">
         {!loadError && (
           <p className="text-sm text-ink-tertiary">
             {shortUnits > 0 ? (

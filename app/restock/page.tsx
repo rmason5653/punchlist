@@ -82,7 +82,7 @@ export default async function RestockPage() {
 
   return (
     <Container>
-      <PageHeader eyebrow="View 1" title="Restock run">
+      <PageHeader eyebrow="Weekly run · managers" title="Restock run">
         <div className="flex flex-col items-start gap-2 sm:items-end">
           {runs.length > 0 && (
             <p className="text-sm text-ink-tertiary">

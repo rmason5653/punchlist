@@ -26,7 +26,7 @@ export default async function ParkingPage() {
 
   return (
     <Container>
-      <PageHeader eyebrow="View 5" title="Parking passes">
+      <PageHeader eyebrow="Passes · managers" title="Parking passes">
         {!loadError && (
           <p className="text-sm text-ink-tertiary">
             {missing > 0 ? (

@@ -28,7 +28,7 @@ export default async function CentralPage() {
 
   return (
     <Container>
-      <PageHeader eyebrow="View 2" title="Stockroom">
+      <PageHeader eyebrow="Bulk stock · managers" title="Stockroom">
         {!loadError && (
           <p className="text-sm text-ink-tertiary">
             {low > 0 && <span className="text-state-warn">{low} below reorder</span>}

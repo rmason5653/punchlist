@@ -21,11 +21,13 @@
   --line-1: rgba(112, 113, 118, 0.14);
   --line-2: rgba(112, 113, 118, 0.28);
 
-  /* Text ramp (bone-derived on midnight). */
+  /* Text ramp (bone-derived on midnight). ink-4 is lifted above the kit's
+     steel (#707176 measured 3.7:1 on a card) so 11px meta text clears AA;
+     ink-5 is for rules and decoration, never for words or numbers. */
   --ink-1: #f5f2ec;
   --ink-2: #c9c6bf;
   --ink-3: #9b9c9f;
-  --ink-4: #707176;
+  --ink-4: #8a8b91;
   --ink-5: #4d4d52;
 
   /* Directional/state accent TEXT — tuned for contrast on midnight. */
@@ -62,14 +64,14 @@ html[data-theme="light"] {
   --ink-1: #0b0b0d;
   --ink-2: #3a3b40;
   --ink-3: #5e5f65;
-  --ink-4: #737479;
+  --ink-4: #66676c;
   --ink-5: #a9aaae;
 
   /* Darkened accent text for contrast on bone (function over kit: the bright
      dark-mode variants fail contrast on a light surface). */
   --state-bad: #c90502;
   --state-ok: #1f8a4c;
-  --state-warn: #9a7400;
+  --state-warn: #7a5c00;
 
   --scrollbar-track: #e4dfd4;
   --scrollbar-thumb: #cfc8ba;

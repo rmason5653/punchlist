@@ -98,7 +98,7 @@ function UnitCard({ u }: { u: UnitSummary }) {
               : `Parking: ${u.parking_pass_label}`}
           </div>
         </div>
-        <span className="text-ink-faint transition group-hover:text-ink-tertiary">
+        <span className="text-ink-muted transition group-hover:text-ink-tertiary">
           →
         </span>
       </div>
@@ -110,7 +110,7 @@ function UnitCard({ u }: { u: UnitSummary }) {
         {u.parking_status === "missing" && <Pill tone="bad">Pass missing</Pill>}
       </div>
 
-      <div className="mt-3 text-[11px] text-ink-faint">
+      <div className="mt-3 text-[11px] text-ink-muted">
         Last cleaned {formatWhen(u.last_cleaned_at)}
       </div>
     </Link>

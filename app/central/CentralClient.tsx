@@ -133,9 +133,13 @@ function Row({ item, first }: { item: CentralReserveItem; first: boolean }) {
 
   return (
     <div className={first ? "" : "border-t border-line"}>
-      <div className="flex items-center gap-3 px-4 py-3">
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium text-ink-primary">
+      {/* On a phone the name takes the whole first line and the numbers and
+          action wrap to a second — a fixed one-line row was truncating
+          "Kitchen trash bags" to "Kitchen tras…" on the one screen where the
+          manager must read item names. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+        <div className="min-w-0 basis-full sm:basis-0 sm:flex-1">
+          <div className="text-sm font-medium text-ink-primary">
             {displayName(item)}
           </div>
           <div className="tnum text-[11px] text-ink-muted">
@@ -146,7 +150,7 @@ function Row({ item, first }: { item: CentralReserveItem; first: boolean }) {
                 <Link
                   href="/settings"
                   title="This target is calculated from leave-behind × turnovers. Change it in Settings."
-                  className="text-ink-faint underline decoration-dotted underline-offset-2 transition hover:text-ink-tertiary"
+                  className="text-ink-muted underline decoration-dotted underline-offset-2 transition hover:text-ink-tertiary"
                 >
                   calculated
                 </Link>
@@ -155,7 +159,7 @@ function Row({ item, first }: { item: CentralReserveItem; first: boolean }) {
           </div>
         </div>
 
-        <div className="w-20 text-right">
+        <div className="mr-auto w-20 text-left sm:mr-0 sm:text-right">
           <div className="tnum font-display text-2xl font-extrabold tracking-[-0.03em] text-ink-primary">
             {item.quantity_on_hand}
           </div>

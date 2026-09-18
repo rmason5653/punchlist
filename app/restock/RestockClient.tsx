@@ -295,7 +295,7 @@ export default function RestockClient({
                           {run.unit_name}
                         </div>
                         <div className="tnum text-[11px] text-ink-muted">
-                          {run.items.length} items · {total} units to pull
+                          {run.items.length} {run.items.length === 1 ? "item" : "items"} · {total} units to pull
                         </div>
                       </div>
                       <button

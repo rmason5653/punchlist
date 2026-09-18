@@ -129,7 +129,7 @@ export default function SettingsClient({
         />
       </div>
 
-      <p className="tnum max-w-2xl text-[11px] leading-relaxed text-ink-faint">
+      <p className="tnum max-w-2xl text-[11px] leading-relaxed text-ink-muted">
         closet par = leave-behind × (turnovers + buffer) &nbsp;·&nbsp; reorder =
         leave-behind × buffer &nbsp;·&nbsp; stockroom = weekly use × stockroom buffer
       </p>

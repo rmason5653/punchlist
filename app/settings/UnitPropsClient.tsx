@@ -140,7 +140,7 @@ function Grid({
           {title}
         </span>
         <span className="tnum text-xs text-ink-tertiary">{tally}</span>
-        <span className="w-full text-[11px] text-ink-faint">{hint}</span>
+        <span className="w-full text-[11px] text-ink-muted">{hint}</span>
       </div>
 
       {groups.map(([property, list], idx) => (

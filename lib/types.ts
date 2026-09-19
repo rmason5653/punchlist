@@ -94,7 +94,9 @@ export interface CentralReserveItem {
   /** Where the targets came from (set by listCentralReserveWithTargets):
    *  "pulls" = from real use over the last weeks, "calculated" = the
    *  leave-behind × turnovers estimate (no pull history yet), "set" = by hand. */
-  target_basis?: "pulls" | "calculated" | "set";
+  /** pulls: last-four-weeks velocity · history: whole-log average (nothing
+   *  pulled lately) · calculated: estimate, never pulled · set: by hand. */
+  target_basis?: "pulls" | "history" | "calculated" | "set";
   /** Weekly use behind a "pulls" target. */
   weekly_use?: number;
 }

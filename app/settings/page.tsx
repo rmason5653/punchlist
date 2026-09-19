@@ -1,4 +1,10 @@
-import { getSettings, listConsumableItems, listUnits } from "@/lib/inventory";
+import {
+  getSettings,
+  listConsumableItems,
+  listUnits,
+  measuredTurnover,
+  type MeasuredTurnover,
+} from "@/lib/inventory";
 import { Container, PageHeader, SetupNotice } from "@/app/components/ui";
 import type { ConsumableItem, Settings, Unit } from "@/lib/types";
 import SettingsClient from "./SettingsClient";
@@ -17,6 +23,7 @@ export default async function SettingsPage() {
   };
   let items: ConsumableItem[] = [];
   let units: Unit[] = [];
+  let measured: MeasuredTurnover | null = null;
   let loadError: string | null = null;
 
   try {
@@ -31,6 +38,13 @@ export default async function SettingsPage() {
   } catch (err) {
     loadError = (err as Error).message;
   }
+  // What the clean log says about turnover — shown beside the setting, so
+  // the number par is built on can be checked against reality.
+  try {
+    measured = await measuredTurnover(8);
+  } catch {
+    // Non-critical.
+  }
 
   return (
     <Container>
@@ -39,7 +53,7 @@ export default async function SettingsPage() {
         <SetupNotice message={loadError} />
       ) : (
         <div className="space-y-10">
-          <SettingsClient settings={settings} items={items} />
+          <SettingsClient settings={settings} items={items} measured={measured} />
 
           <section>
             <h2 className="font-display text-lg font-bold tracking-[-0.01em] text-ink-primary">

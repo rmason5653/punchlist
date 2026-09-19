@@ -16,16 +16,42 @@ export interface UnitSummary {
 }
 
 const COLLAPSED_KEY = "mason_inv_collapsed";
+const SCOPE_KEY = "mason_inv_scope";
 
 export default function UnitPicker({
   units,
   recent = [],
+  mine = [],
 }: {
   units: UnitSummary[];
   recent?: UnitSummary[];
+  /** Unit ids this person has cleaned before. When there are any, the picker
+   *  opens on them — one crew's nine units, not the whole portfolio. */
+  mine?: string[];
 }) {
   const [q, setQ] = useState("");
   const query = q.trim().toLowerCase();
+  const mineSet = useMemo(() => new Set(mine), [mine]);
+  const mineList = useMemo(() => units.filter((u) => mineSet.has(u.unit_id)), [units, mineSet]);
+  const hasMine = mineList.length > 0;
+  const [scope, setScope] = useState<"mine" | "all">("mine");
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SCOPE_KEY);
+      if (saved === "all" || saved === "mine") setScope(saved);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  function pickScope(next: "mine" | "all") {
+    setScope(next);
+    try {
+      localStorage.setItem(SCOPE_KEY, next);
+    } catch {
+      /* ignore */
+    }
+  }
+  const showMine = hasMine && scope === "mine";
   // Buildings a person has folded away, remembered on this device. Citizen is
   // 39 cards; someone working Highland shouldn't scroll past it every time.
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
@@ -51,6 +77,7 @@ export default function UnitPicker({
     });
   }
 
+  // A search always looks at every unit; the scope only shapes the browse.
   const filtered = useMemo(
     () =>
       query
@@ -59,8 +86,10 @@ export default function UnitPicker({
               u.name.toLowerCase().includes(query) ||
               u.property_name.toLowerCase().includes(query),
           )
-        : units,
-    [units, query],
+        : showMine
+          ? mineList
+          : units,
+    [units, mineList, showMine, query],
   );
 
   // Group by building, preserving the sorted order.
@@ -76,7 +105,7 @@ export default function UnitPicker({
 
   return (
     <div>
-      {recent.length > 0 && !query && (
+      {recent.length > 0 && !query && !showMine && (
         <div className="mb-5">
           <h3 className="mb-2 font-display text-sm font-bold uppercase tracking-[0.06em] text-ink-secondary">
             Your recent units
@@ -108,6 +137,36 @@ export default function UnitPicker({
           className="min-h-11 w-full rounded-control border border-line-strong bg-surface-3 px-4 py-3 text-sm text-ink-primary placeholder:text-ink-muted outline-none focus:border-red"
         />
       </div>
+
+      {hasMine && !query && (
+        <div
+          role="group"
+          aria-label="Which units to show"
+          className="mb-5 inline-flex rounded-control border border-line-strong bg-surface-2 p-0.5"
+        >
+          {(
+            [
+              ["mine", `Your units`, mineList.length],
+              ["all", `All units`, units.length],
+            ] as const
+          ).map(([key, label, n]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => pickScope(key)}
+              aria-pressed={scope === key}
+              className={`min-h-9 rounded-[6px] px-3.5 text-sm font-semibold transition ${
+                scope === key
+                  ? "bg-surface-4 text-ink-primary shadow-e1"
+                  : "text-ink-tertiary hover:text-ink-primary"
+              }`}
+            >
+              {label}
+              <span className="ml-1.5 tnum text-xs font-medium text-ink-muted">{n}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {groups.length === 0 ? (
         <p className="text-sm text-ink-tertiary">

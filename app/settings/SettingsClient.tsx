@@ -3,13 +3,16 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { ConsumableItem, Settings } from "@/lib/types";
+import type { MeasuredTurnover } from "@/lib/inventory";
 
 export default function SettingsClient({
   settings,
   items,
+  measured = null,
 }: {
   settings: Settings;
   items: ConsumableItem[];
+  measured?: MeasuredTurnover | null;
 }) {
   const router = useRouter();
   const [freq, setFreq] = useState(String(settings.default_turnover_frequency));
@@ -99,6 +102,15 @@ export default function SettingsClient({
               How many guest turnovers a unit averages in a week — the main
               driver of how fast stock is used. <b className="text-ink-secondary">Raise it</b> and
               every closet par and Stockroom target goes up.
+              {measured && (
+                <span className="mt-1.5 block text-ink-secondary">
+                  {measured.cleans === 0
+                    ? `Nothing in the clean log for the last ${measured.weeks} weeks to measure against.`
+                    : `Measured from the clean log, last ${measured.weeks} weeks: ${measured.cleans} ${
+                        measured.cleans === 1 ? "clean" : "cleans"
+                      } across ${measured.units} ${measured.units === 1 ? "unit" : "units"}, about ${measured.perUnitPerWeek.toFixed(1)} a week each.`}
+                </span>
+              )}
             </>
           }
         />

@@ -98,35 +98,56 @@ export async function listCentralReserve(): Promise<CentralReserveItem[]> {
 /** How many weeks of pull history set the Stockroom's targets. */
 export const VELOCITY_WEEKS = 4;
 
+export interface PullVelocity {
+  /** Units per week. */
+  weekly: number;
+  /** "recent": from the last VELOCITY_WEEKS weeks of pulls. "history": no
+   *  pull in that window, so the average over the item's whole pull log. */
+  basis: "recent" | "history";
+}
+
 /**
  * Weekly use of each consumable, from what was actually pulled from the
- * Stockroom over the last VELOCITY_WEEKS weeks. A log younger than the
- * window is divided by the history it really has (never less than a week).
- * Items with no pulls in the window are absent — the caller can't tell
- * "unused" from "new", so it keeps the estimate for those.
+ * Stockroom. The last VELOCITY_WEEKS weeks when there are pulls in them (a
+ * log younger than the window is divided by the history it really has, never
+ * less than a week); otherwise the average over everything ever pulled, so a
+ * quiet month doesn't drop an item back to the old theoretical target. Items
+ * never pulled are absent — the caller keeps the estimate for those.
  */
-export async function weeklyPullVelocity(): Promise<Map<string, number>> {
+export async function weeklyPullVelocity(): Promise<Map<string, PullVelocity>> {
   const sb = getSupabase();
-  const since = new Date(Date.now() - VELOCITY_WEEKS * 7 * 86_400_000).toISOString();
-  const [recent, oldest] = await Promise.all([
-    sb
-      .from("central_pull_log")
-      .select("item_name, quantity")
-      .eq("category", "consumable")
-      .gte("pulled_at", since),
-    sb.from("central_pull_log").select("pulled_at").order("pulled_at", { ascending: true }).limit(1),
-  ]);
-  if (recent.error) throw new Error(recent.error.message);
-  if (oldest.error) throw new Error(oldest.error.message);
-  const firstAt = oldest.data?.[0]?.pulled_at
-    ? new Date((oldest.data[0] as { pulled_at: string }).pulled_at).getTime()
-    : Date.now();
-  const weeks = Math.max(1, Math.min(VELOCITY_WEEKS, (Date.now() - firstAt) / (7 * 86_400_000)));
-  const totals = new Map<string, number>();
-  for (const p of (recent.data ?? []) as { item_name: string; quantity: number }[]) {
-    totals.set(p.item_name, (totals.get(p.item_name) ?? 0) + p.quantity);
+  // The whole consumable pull log, oldest first. A weekly run across the
+  // portfolio is a few hundred rows, so years fit under the cap.
+  const { data, error } = await sb
+    .from("central_pull_log")
+    .select("item_name, quantity, pulled_at")
+    .eq("category", "consumable")
+    .order("pulled_at", { ascending: true })
+    .limit(20000);
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as { item_name: string; quantity: number; pulled_at: string }[];
+  const WEEK = 7 * 86_400_000;
+  const now = Date.now();
+  const since = now - VELOCITY_WEEKS * WEEK;
+  const logStart = rows.length ? new Date(rows[0].pulled_at).getTime() : now;
+  const windowWeeks = Math.max(1, Math.min(VELOCITY_WEEKS, (now - logStart) / WEEK));
+
+  const recent = new Map<string, number>();
+  const all = new Map<string, { qty: number; firstAt: number }>();
+  for (const p of rows) {
+    const t = new Date(p.pulled_at).getTime();
+    if (t >= since) recent.set(p.item_name, (recent.get(p.item_name) ?? 0) + p.quantity);
+    const a = all.get(p.item_name);
+    if (a) a.qty += p.quantity;
+    else all.set(p.item_name, { qty: p.quantity, firstAt: t });
   }
-  return new Map([...totals].map(([k, v]) => [k, v / weeks]));
+  const out = new Map<string, PullVelocity>();
+  for (const [item, a] of all) {
+    const r = recent.get(item);
+    if (r !== undefined) out.set(item, { weekly: r / windowWeeks, basis: "recent" });
+    else out.set(item, { weekly: a.qty / Math.max(1, (now - a.firstAt) / WEEK), basis: "history" });
+  }
+  return out;
 }
 
 /**
@@ -135,7 +156,8 @@ export async function weeklyPullVelocity(): Promise<Map<string, number>> {
  * Settings. The stored numbers assumed every unit turns over three times a
  * week and is refilled in full, which flagged nearly everything Low. Linens
  * and bulk supplies keep their hand-set targets; an item with no pull history
- * keeps the estimate until it has one.
+ * keeps the estimate until it has one, and one with no pull in the window
+ * uses its whole-log average rather than falling back to the estimate.
  */
 export async function listCentralReserveWithTargets(): Promise<CentralReserveItem[]> {
   const [reserve, velocity, settings] = await Promise.all([
@@ -146,13 +168,13 @@ export async function listCentralReserveWithTargets(): Promise<CentralReserveIte
   return reserve.map((r) => {
     if (r.category !== "consumable" || r.fixed_par) return { ...r, target_basis: "set" as const };
     const v = velocity.get(r.item_name);
-    if (v === undefined) return { ...r, target_basis: "calculated" as const };
-    const weekly = Math.round(v);
+    if (!v) return { ...r, target_basis: "calculated" as const };
+    const weekly = Math.round(v.weekly);
     return {
       ...r,
       reorder_point: weekly,
       par_level: Math.round(weekly * settings.central_buffer),
-      target_basis: "pulls" as const,
+      target_basis: v.basis === "recent" ? ("pulls" as const) : ("history" as const),
       weekly_use: weekly,
     };
   });
@@ -242,6 +264,52 @@ export async function listRecentCleans(limit = 8): Promise<RecentClean[]> {
   });
 }
 
+/** Every unit one person has ever cleaned, most recent first, no repeats. */
+export async function unitIdsCleanedBy(staffName: string): Promise<string[]> {
+  if (!staffName) return [];
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from("clean_log")
+    .select("unit_id, completed_at")
+    .eq("staff_name", staffName)
+    .order("completed_at", { ascending: false })
+    .limit(2000);
+  if (error) throw new Error(error.message);
+  const seen = new Set<string>();
+  for (const r of (data ?? []) as { unit_id: string | null }[]) if (r.unit_id) seen.add(r.unit_id);
+  return [...seen];
+}
+
+export interface MeasuredTurnover {
+  weeks: number;
+  cleans: number;
+  /** Distinct units with at least one clean in the window. */
+  units: number;
+  /** Cleans per unit per week, across the units that were cleaned at all. */
+  perUnitPerWeek: number;
+}
+
+/** What the clean log says about turnover, to set beside the number in
+ *  Settings that par is built on. */
+export async function measuredTurnover(weeks = 8): Promise<MeasuredTurnover> {
+  const sb = getSupabase();
+  const since = new Date(Date.now() - weeks * 7 * 86_400_000).toISOString();
+  const { data, error } = await sb
+    .from("clean_log")
+    .select("unit_id")
+    .gte("completed_at", since)
+    .limit(10000);
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as { unit_id: string | null }[];
+  const units = new Set(rows.map((r) => r.unit_id).filter((id): id is string => !!id));
+  return {
+    weeks,
+    cleans: rows.length,
+    units: units.size,
+    perUnitPerWeek: units.size ? rows.length / units.size / weeks : 0,
+  };
+}
+
 /** Unit ids one person cleaned most recently, newest first, no repeats. */
 export async function recentUnitIdsFor(staffName: string, limit = 5): Promise<string[]> {
   if (!staffName) return [];
@@ -319,7 +387,12 @@ export function buildLinenIntegrity(
 
 export interface DashboardCounts {
   unitsBelowReorder: number;
+  /** Consumables and bulk supplies at or below reorder. */
   centralLow: number;
+  /** Linen replacement stock at or below reorder — counted apart, since the
+   *  Stockroom rarely holds spare linen and fifteen zeros would drown the
+   *  number that drives a shopping trip. */
+  linenStockLow: number;
   linenShortUnits: number;
   parkingMissing: number;
 }
@@ -334,7 +407,8 @@ export function buildCounts(
   const integrity = buildLinenIntegrity(units, linens);
   return {
     unitsBelowReorder: restock.length,
-    centralLow: reserve.filter((r) => r.quantity_on_hand <= r.reorder_point).length,
+    centralLow: reserve.filter((r) => r.category !== "linen" && r.quantity_on_hand <= r.reorder_point).length,
+    linenStockLow: reserve.filter((r) => r.category === "linen" && r.quantity_on_hand <= r.reorder_point).length,
     linenShortUnits: integrity.filter((u) => u.short.length > 0).length,
     parkingMissing: units.filter((u) => u.parking_status === "missing").length,
   };

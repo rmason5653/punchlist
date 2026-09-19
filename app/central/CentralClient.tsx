@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { linenLabel } from "@/lib/constants";
+import { BUSINESS_TZ, linenLabel } from "@/lib/constants";
 import type { CentralReserveItem } from "@/lib/types";
 import { Pill } from "@/app/components/ui";
 import { useToast } from "@/app/components/Toast";
@@ -25,6 +25,43 @@ export default function CentralClient({
   items: CentralReserveItem[];
   velocityWeeks: number;
 }) {
+  const toast = useToast();
+  const [buyText, setBuyText] = useState<string | null>(null);
+
+  // Everything at or below reorder with something to buy, as one list that
+  // can leave the app — the Stockroom is where the shopping list is born and
+  // the digest may or may not be connected.
+  const buy = items.filter(
+    (i) => i.quantity_on_hand <= i.reorder_point && i.par_level - i.quantity_on_hand > 0,
+  );
+  function buildBuyList(): string {
+    const day = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: BUSINESS_TZ });
+    const lines = [`Par buy list · ${day}`];
+    const groups: [string, CentralReserveItem[]][] = [
+      ["Consumables", buy.filter((i) => i.category === "consumable")],
+      ["Linens", buy.filter((i) => i.category === "linen")],
+    ];
+    for (const [label, rows] of groups) {
+      if (rows.length === 0) continue;
+      lines.push("", `${label}:`);
+      for (const r of rows) {
+        lines.push(`${displayName(r)}: ${r.par_level - r.quantity_on_hand} (${r.quantity_on_hand} on hand)`);
+      }
+    }
+    return lines.join("\n");
+  }
+  async function copyBuyList() {
+    const text = buildBuyList();
+    try {
+      await navigator.clipboard.writeText(text);
+      setBuyText(null);
+      toast(`Buy list copied — ${buy.length} ${buy.length === 1 ? "item" : "items"}`);
+    } catch {
+      // No clipboard (old browser, no HTTPS): show it so it can be selected.
+      setBuyText(text);
+    }
+  }
+
   const sections: { key: string; label: string; note?: React.ReactNode; rows: CentralReserveItem[] }[] = [
     {
       key: "consumable",
@@ -38,8 +75,9 @@ export default function CentralClient({
           <Link href="/settings" className="text-ink-secondary underline underline-offset-2 hover:text-ink-primary">
             Settings
           </Link>
-          . An item with no pulls yet uses the estimate from leave-behind × turnovers.
-          Adjust only the count here.
+          . An item with nothing pulled lately uses its whole-log average; one
+          never pulled uses the estimate from leave-behind × turnovers. Adjust
+          only the count here.
         </>
       ),
       rows: items.filter((i) => i.category === "consumable" && !i.fixed_par),
@@ -60,6 +98,30 @@ export default function CentralClient({
 
   return (
     <div className="space-y-8">
+      {buy.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-card border border-line bg-surface-2 px-4 py-3">
+          <p className="m-0 text-sm text-ink-secondary">
+            <b className="text-ink-primary">{buy.length}</b> {buy.length === 1 ? "item" : "items"} to buy to
+            bring the Stockroom to par.
+          </p>
+          <button
+            type="button"
+            onClick={copyBuyList}
+            className="min-h-9 rounded-control border border-line-strong bg-surface-3 px-3 font-display text-xs font-bold text-ink-primary transition hover:border-red active:brightness-95"
+          >
+            Copy buy list
+          </button>
+          {buyText && (
+            <textarea
+              readOnly
+              value={buyText}
+              aria-label="Buy list"
+              onFocus={(e) => e.currentTarget.select()}
+              className="mt-1 min-h-40 w-full rounded-control border border-line-strong bg-surface-3 p-3 font-mono text-xs text-ink-primary"
+            />
+          )}
+        </div>
+      )}
       {sections.map((g) => {
         if (g.rows.length === 0) return null;
         return (
@@ -70,7 +132,7 @@ export default function CentralClient({
             {g.note && <p className="mb-3 mt-1 text-xs text-ink-muted">{g.note}</p>}
             <div className="overflow-hidden rounded-card border border-line bg-surface-2 shadow-e1">
               {g.rows.map((item, idx) => (
-                <Row key={item.id} item={item} first={idx === 0} />
+                <Row key={item.id} item={item} first={idx === 0} velocityWeeks={velocityWeeks} />
               ))}
             </div>
           </section>
@@ -80,7 +142,15 @@ export default function CentralClient({
   );
 }
 
-function Row({ item, first }: { item: CentralReserveItem; first: boolean }) {
+function Row({
+  item,
+  first,
+  velocityWeeks,
+}: {
+  item: CentralReserveItem;
+  first: boolean;
+  velocityWeeks: number;
+}) {
   const router = useRouter();
   const toast = useToast();
   // receive: add a delivery. adjust: recount (and, for hand-set items, retarget).
@@ -197,6 +267,8 @@ function Row({ item, first }: { item: CentralReserveItem; first: boolean }) {
           <div className="tnum text-[11px] text-ink-muted">
             par {item.par_level} · reorder {item.reorder_point}
             {item.target_basis === "pulls" && ` · ~${item.weekly_use}/wk pulled`}
+            {item.target_basis === "history" &&
+              ` · ~${item.weekly_use}/wk over the whole log, nothing pulled in ${velocityWeeks} wks`}
             {item.target_basis === "calculated" && " · estimate, no pulls yet"}
           </div>
         </div>

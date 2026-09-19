@@ -6,7 +6,7 @@ import {
   listLinens,
   listRecentCleans,
   listUnits,
-  recentUnitIdsFor,
+  unitIdsCleanedBy,
   type RecentClean,
 } from "@/lib/inventory";
 import type { ConsumablePar, LinenPar, Unit } from "@/lib/types";
@@ -62,12 +62,14 @@ export default async function HomePage() {
   let counts = {
     unitsBelowReorder: 0,
     centralLow: 0,
+    linenStockLow: 0,
     linenShortUnits: 0,
     parkingMissing: 0,
   };
   let loadError: string | null = null;
   let recentCleans: RecentClean[] = [];
   let recentIds: string[] = [];
+  let mineIds: string[] = [];
 
   try {
     [units, cons, linens] = await Promise.all([
@@ -90,14 +92,19 @@ export default async function HomePage() {
       // Non-critical — the dashboard still renders without the clean feed.
     }
   } else {
-    // A cleaner's own last few units, so the one they're walking to is a tap
-    // away instead of a search.
+    // Every unit this cleaner has worked, newest first: the picker opens on
+    // those, and the first few make the "walking to it now" row.
     try {
-      recentIds = await recentUnitIdsFor(viewer?.name ?? "");
+      mineIds = await unitIdsCleanedBy(viewer?.name ?? "");
+      recentIds = mineIds.slice(0, 5);
     } catch {
       // Non-critical.
     }
   }
+
+  const daysSinceLastClean = recentCleans[0]
+    ? Math.floor((Date.now() - new Date(recentCleans[0].completed_at).getTime()) / 86_400_000)
+    : null;
 
   const roll = rollup(units, cons, linens);
   const summaries: UnitSummary[] = units.map((u) => {
@@ -158,7 +165,11 @@ export default async function HomePage() {
               label="Stockroom low"
               value={counts.centralLow}
               tone={counts.centralLow > 0 ? "warn" : "ok"}
-              hint="Time to buy bulk"
+              hint={
+                counts.linenStockLow > 0
+                  ? `Time to buy bulk · ${counts.linenStockLow} linen ${counts.linenStockLow === 1 ? "item" : "items"} low`
+                  : "Time to buy bulk"
+              }
               href="/central"
             />
             <StatCard
@@ -179,9 +190,18 @@ export default async function HomePage() {
 
           {recentCleans.length > 0 && (
             <div className="mt-6">
-              <h3 className="mb-3 font-display text-sm font-bold uppercase tracking-[0.06em] text-ink-secondary">
-                Recent cleans
-              </h3>
+              <div className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <h3 className="font-display text-sm font-bold uppercase tracking-[0.06em] text-ink-secondary">
+                  Recent cleans
+                </h3>
+                {/* Silence is a signal: units keep turning over whether or not
+                    anyone logs the clean. */}
+                {daysSinceLastClean !== null && daysSinceLastClean >= 3 && (
+                  <span className="text-xs font-semibold text-state-warn">
+                    No cleans logged in {daysSinceLastClean} days
+                  </span>
+                )}
+              </div>
               <div className="overflow-hidden rounded-card border border-line bg-surface-2 shadow-e1">
                 {recentCleans.map((c, idx) => (
                   <div
@@ -225,6 +245,7 @@ export default async function HomePage() {
       ) : (
         <UnitPicker
           units={summaries}
+          mine={mineIds}
           recent={recentIds
             .map((id) => summaries.find((s) => s.unit_id === id))
             .filter((s): s is UnitSummary => !!s)}

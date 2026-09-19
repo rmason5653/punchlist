@@ -224,7 +224,7 @@ export default function RestockClient({
           type="button"
           onClick={restockAll}
           disabled={busy}
-          className="ml-auto min-h-10 rounded-control bg-red px-4 py-2 font-display text-sm font-bold text-bone transition duration-150 ease-out hover:bg-red-hover active:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-h-10 w-full rounded-control bg-red sm:ml-auto sm:w-auto px-4 py-2 font-display text-sm font-bold text-bone transition duration-150 ease-out hover:bg-red-hover active:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {allBusy
             ? `Restocking ${progress?.done ?? 0}/${progress?.total ?? runs.length}…`
@@ -240,11 +240,11 @@ export default function RestockClient({
       {/* Central pick list — load the van once. */}
       {pickList.length > 0 && (
         <div className="mb-3 rounded-card border border-line bg-surface-1 p-5 shadow-e1">
-          <div className="flex items-baseline justify-between gap-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
             <h2 className="font-display text-sm font-bold uppercase tracking-[0.06em] text-ink-secondary">
               Pull from the Stockroom
             </h2>
-            <span className="tnum text-[11px] text-ink-muted">
+            <span className="tnum whitespace-nowrap text-[11px] text-ink-muted">
               {grandTotal} units total
             </span>
           </div>

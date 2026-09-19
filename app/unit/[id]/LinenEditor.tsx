@@ -186,11 +186,11 @@ export default function LinenEditor({
         aria-expanded={open}
         className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
       >
-        <span>
+        <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="font-display text-sm font-bold uppercase tracking-[0.06em] text-ink-secondary">
             Manage linen par
           </span>
-          <span className="ml-2 text-[11px] text-ink-muted">
+          <span className="whitespace-nowrap text-[11px] text-ink-muted">
             Manager only · {linens.length} {linens.length === 1 ? "type" : "types"}
           </span>
         </span>

@@ -346,7 +346,7 @@ export default function TeamClient({ users }: { users: AppUser[] }) {
               ) : (
                 <>
                   <div className="flex flex-wrap items-center gap-3">
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-[12rem] flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-display text-base font-bold text-ink-primary">
                           {u.name}

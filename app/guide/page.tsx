@@ -68,7 +68,7 @@ function Card({
 /** Inline reference to a button/label in the app. */
 function B({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-[4px] border border-line-strong bg-surface-3 px-1.5 py-0.5 text-xs font-semibold text-ink-primary">
+    <span className="whitespace-nowrap rounded-[4px] border border-line-strong bg-surface-3 px-1.5 py-0.5 text-xs font-semibold text-ink-primary">
       {children}
     </span>
   );

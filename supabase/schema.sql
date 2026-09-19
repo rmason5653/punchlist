@@ -29,8 +29,13 @@ create table if not exists units (
   has_pullout          boolean not null default false,
   -- Per rollaway: twin sheets, 1 twin quilt, 1 queen pillowcase.
   rollaway_beds        int     not null default 0,
+  -- Hostaway listing id, linking this unit to the master units list in the
+  -- Ops database (core.units). Nullable; Par itself does not read it yet.
+  hostaway_listing_id  text,
   created_at           timestamptz not null default now()
 );
+create unique index if not exists units_hostaway_listing_id_key
+  on units (hostaway_listing_id) where hostaway_listing_id is not null;
 
 -- Global inputs that drive the calculated par math (single row).
 create table if not exists settings (

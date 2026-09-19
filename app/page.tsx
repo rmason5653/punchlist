@@ -6,6 +6,7 @@ import {
   listLinens,
   listRecentCleans,
   listUnits,
+  cleanSummaryByUnit,
   unitIdsCleanedBy,
   type RecentClean,
 } from "@/lib/inventory";
@@ -70,6 +71,9 @@ export default async function HomePage() {
   let recentCleans: RecentClean[] = [];
   let recentIds: string[] = [];
   let mineIds: string[] = [];
+  // Units with at least one clean recorded here — the in-house transition,
+  // one number.
+  let onPar: number | null = null;
 
   try {
     [units, cons, linens] = await Promise.all([
@@ -87,7 +91,9 @@ export default async function HomePage() {
 
   if (admin) {
     try {
-      recentCleans = await listRecentCleans();
+      const [cleans, summary] = await Promise.all([listRecentCleans(), cleanSummaryByUnit()]);
+      recentCleans = cleans;
+      onPar = units.filter((u) => summary.has(u.unit_id)).length;
     } catch {
       // Non-critical — the dashboard still renders without the clean feed.
     }
@@ -188,6 +194,22 @@ export default async function HomePage() {
             />
           </div>
 
+          {onPar !== null && !loadError && (
+            <p className="mt-4 text-sm text-ink-tertiary">
+              In-house transition:{" "}
+              <b className="tnum text-ink-primary">
+                {onPar} of {units.length}
+              </b>{" "}
+              units have had a clean recorded in Par.{" "}
+              <Link
+                href="/transition"
+                className="font-semibold text-ink-secondary underline underline-offset-2 hover:text-ink-primary"
+              >
+                See which
+              </Link>
+            </p>
+          )}
+
           {recentCleans.length > 0 && (
             <div className="mt-6">
               <div className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -210,10 +232,15 @@ export default async function HomePage() {
                       idx > 0 ? "border-t border-line" : ""
                     }`}
                   >
-                    <span className="font-medium text-ink-primary">
-                      {c.unit_name ?? "—"}
+                    <span className="min-w-0">
+                      <span className="block font-medium text-ink-primary">{c.unit_name ?? "—"}</span>
+                      <span className="block text-[11px] text-ink-muted">
+                        {c.flagged_items.length > 0
+                          ? `${c.flagged_items.length} flagged · ${c.flagged_items.join(", ")}`
+                          : "nothing flagged"}
+                      </span>
                     </span>
-                    <span className="flex items-center gap-3 text-xs text-ink-muted">
+                    <span className="flex shrink-0 items-center gap-3 text-xs text-ink-muted">
                       {c.staff_name && <span>{c.staff_name}</span>}
                       <span className="tnum">{formatWhen(c.completed_at)}</span>
                     </span>

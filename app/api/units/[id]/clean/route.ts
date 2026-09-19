@@ -87,12 +87,17 @@ export async function POST(
       ),
     ]);
 
-    // 4. Clean log.
+    // 4. Clean log, with what this clean flagged so a manager can see the
+    //    routine being done (or rubber-stamped) from Home.
+    const flagged = consUpdates
+      .map((u) => consById.get(u.id)?.item_name)
+      .filter((n): n is string => !!n);
     const { error: clErr } = await sb.from("clean_log").insert({
       unit_id: id,
       staff_name: body.staff_name?.trim() || null,
       parking_ok: parkingOk,
       linens_ok: linensOk,
+      flagged_items: flagged,
     });
     if (clErr) throw new Error(clErr.message);
 

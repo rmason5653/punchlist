@@ -5,10 +5,11 @@ import {
   measuredTurnover,
   type MeasuredTurnover,
 } from "@/lib/inventory";
-import { Container, PageHeader, SetupNotice } from "@/app/components/ui";
+import { Container, PageHeader, SetupNotice, formatWhen } from "@/app/components/ui";
 import type { ConsumableItem, Settings, Unit } from "@/lib/types";
 import SettingsClient from "./SettingsClient";
 import UnitPropsClient from "./UnitPropsClient";
+import AddUnitClient from "./AddUnitClient";
 import DigestButton from "@/app/components/DigestButton";
 import { slackConfigured } from "@/lib/slack";
 import { emailConfigured } from "@/lib/email";
@@ -30,7 +31,7 @@ export default async function SettingsPage() {
     [settings, items, units] = await Promise.all([
       getSettings(),
       listConsumableItems(),
-      listUnits(),
+      listUnits({ includeRetired: true }),
     ]);
     // Bulk supplies (fixed par, e.g. a gallon of soap) aren't driven by the
     // leave-behind math — they're edited on the Stockroom, not here.
@@ -55,12 +56,27 @@ export default async function SettingsPage() {
         <div className="space-y-10">
           <SettingsClient settings={settings} items={items} measured={measured} />
 
+          {/* Units come and go with the portfolio; this used to take a SQL editor. */}
+          <section>
+            <h2 className="font-display text-lg font-bold tracking-[-0.01em] text-ink-primary">
+              Units
+            </h2>
+            <div className="mt-3">
+              <AddUnitClient
+                buildings={[...new Set(units.filter((u) => !u.retired_at).map((u) => u.property_name))]}
+                retired={units
+                  .filter((u) => !!u.retired_at)
+                  .map((u) => ({ unit_id: u.unit_id, name: u.name, retired_at: u.retired_at ?? null }))}
+              />
+            </div>
+          </section>
+
           <section>
             <h2 className="font-display text-lg font-bold tracking-[-0.01em] text-ink-primary">
               Bagged bedding
             </h2>
             <div className="mt-3">
-              <UnitPropsClient units={units} />
+              <UnitPropsClient units={units.filter((u) => !u.retired_at)} />
             </div>
           </section>
 
@@ -76,7 +92,11 @@ export default async function SettingsPage() {
                   <div className="text-sm font-medium text-ink-primary">Slack summary</div>
                   <div className="text-xs text-ink-muted">
                     {slackConfigured()
-                      ? "Connected. Posts each morning when there's something to act on; post one now to check."
+                      ? `Connected. Posts each morning when there's something to act on. ${
+                          settings.last_digest_at
+                            ? `Last posted ${formatWhen(settings.last_digest_at)}.`
+                            : "Hasn't posted yet — post one now to check."
+                        }`
                       : "Not connected yet — add a Slack webhook to the app's settings on Vercel (SLACK_WEBHOOK_URL)."}
                   </div>
                 </div>

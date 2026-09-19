@@ -15,7 +15,7 @@ export async function getSettings(): Promise<Settings> {
   const sb = getSupabase();
   const { data, error } = await sb
     .from("settings")
-    .select("default_turnover_frequency, buffer_turnovers, central_buffer")
+    .select("default_turnover_frequency, buffer_turnovers, central_buffer, last_digest_at")
     .eq("id", 1)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -24,7 +24,18 @@ export async function getSettings(): Promise<Settings> {
     default_turnover_frequency: row?.default_turnover_frequency ?? 3,
     buffer_turnovers: row?.buffer_turnovers ?? 1,
     central_buffer: Number(row?.central_buffer ?? 2),
+    last_digest_at: row?.last_digest_at ?? null,
   };
+}
+
+/** Stamp the moment the Slack summary posted, so Settings can show it. */
+export async function markDigestPosted(): Promise<void> {
+  const sb = getSupabase();
+  const { error } = await sb
+    .from("settings")
+    .update({ last_digest_at: new Date().toISOString() })
+    .eq("id", 1);
+  if (error) throw new Error(error.message);
 }
 
 /** Distinct consumable items with their (global) leave-behind. */
@@ -46,14 +57,109 @@ export async function listConsumableItems(): Promise<ConsumableItem[]> {
 // Raw reads
 // ---------------------------------------------------------------------------
 
-export async function listUnits(): Promise<Unit[]> {
+/** The portfolio, in display order. Retired units stay out of every list
+ *  unless asked for; their history stays in the logs. */
+export async function listUnits(opts: { includeRetired?: boolean } = {}): Promise<Unit[]> {
   const sb = getSupabase();
   const { data, error } = await sb
     .from("units")
     .select("*")
     .order("sort", { ascending: true });
   if (error) throw new Error(error.message);
-  return (data ?? []) as Unit[];
+  const all = (data ?? []) as Unit[];
+  return opts.includeRetired ? all : all.filter((u) => !u.retired_at);
+}
+
+export interface NewUnitInput {
+  name: string;
+  property_name: string;
+  /** Drives the linen profile: 1 = king set; 2 = queen + king sets. */
+  bedrooms: 1 | 2;
+  parking_pass_label: string;
+  has_pullout: boolean;
+  rollaway_beds: number;
+  hostaway_listing_id: string | null;
+}
+
+/** Linen par for a new unit. Towels scale with bedrooms; bedding follows the
+ *  two profiles the portfolio already uses (Citizen-style 1-bed with a king,
+ *  Art House-style 2-bed with a queen and a king). Managers tune it after. */
+export function linenProfile(bedrooms: 1 | 2): { linen_type: string; sort: number; par: number }[] {
+  const towels =
+    bedrooms === 2
+      ? [["bath_towel", 1, 5], ["washcloth", 2, 5], ["hand_towel", 3, 2], ["makeup_towel", 4, 2], ["kitchen_towel", 5, 1]]
+      : [["bath_towel", 1, 4], ["washcloth", 2, 4], ["hand_towel", 3, 1], ["makeup_towel", 4, 1], ["kitchen_towel", 5, 1]];
+  const bedding =
+    bedrooms === 2
+      ? [["fitted_sheet_queen", 6, 1], ["fitted_sheet_king", 7, 1], ["flat_sheet_queen", 8, 1], ["flat_sheet_king", 9, 1], ["quilt_queen", 10, 1], ["quilt_king", 11, 1], ["pillowcase_queen", 12, 6], ["pillowcase_king", 13, 2]]
+      : [["fitted_sheet_king", 7, 1], ["flat_sheet_king", 9, 1], ["quilt_king", 11, 1], ["pillowcase_queen", 12, 2], ["pillowcase_king", 13, 2]];
+  return [...towels, ...bedding].map(([linen_type, sort, par]) => ({
+    linen_type: linen_type as string,
+    sort: sort as number,
+    par: par as number,
+  }));
+}
+
+/**
+ * Add a unit the way the seed does: the unit row, the standard closet of
+ * consumables (full, at par), the linen profile, then recalculate par. Sorts
+ * after its building's last unit so it lands with its neighbours on Home.
+ */
+export async function createUnit(input: NewUnitInput): Promise<Unit> {
+  const sb = getSupabase();
+  const all = await listUnits({ includeRetired: true });
+  if (all.some((u) => u.name.toLowerCase() === input.name.toLowerCase())) {
+    throw new Error(`There is already a unit called ${input.name}.`);
+  }
+  const siblings = all.filter((u) => u.property_name === input.property_name);
+  const sort = (siblings.length ? Math.max(...siblings.map((u) => u.sort)) : Math.max(0, ...all.map((u) => u.sort))) + 1;
+  const hasPass = input.parking_pass_label !== "None";
+  const { data, error } = await sb
+    .from("units")
+    .insert({
+      name: input.name,
+      property_name: input.property_name,
+      sort,
+      parking_pass_label: input.parking_pass_label,
+      has_parking_pass: hasPass,
+      parking_status: hasPass ? "ok" : "na",
+      has_pullout: input.has_pullout,
+      rollaway_beds: input.rollaway_beds,
+      hostaway_listing_id: input.hostaway_listing_id,
+    })
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  const unit = data as Unit;
+
+  const items = await listConsumableItems();
+  const cons = items.map((i) => ({
+    unit_id: unit.unit_id,
+    item_name: i.item_name,
+    sort: i.sort,
+    leave_behind: i.leave_behind,
+    // Placeholders for the calculated items; recalc_par() sets the real ones.
+    closet_par: i.fixed_par ? 1 : i.leave_behind * 4,
+    reorder_point: i.fixed_par ? 0 : i.leave_behind,
+    current_actual: i.fixed_par ? 1 : i.leave_behind * 4,
+    fixed_par: i.fixed_par,
+  }));
+  const linens = linenProfile(input.bedrooms).map((l) => ({
+    unit_id: unit.unit_id,
+    linen_type: l.linen_type,
+    sort: l.sort,
+    par_count: l.par,
+    current_actual: l.par,
+  }));
+  const [c, l] = await Promise.all([
+    sb.from("consumable_par").insert(cons),
+    sb.from("linen_par").insert(linens),
+  ]);
+  if (c.error) throw new Error(c.error.message);
+  if (l.error) throw new Error(l.error.message);
+  const { error: rErr } = await sb.rpc("recalc_par");
+  if (rErr) throw new Error(rErr.message);
+  return unit;
 }
 
 export async function getUnit(id: string): Promise<Unit | null> {
@@ -234,6 +340,8 @@ export interface RecentClean {
   unit_name: string | null;
   parking_ok: boolean | null;
   linens_ok: boolean | null;
+  /** Consumables flagged on that clean. */
+  flagged_items: string[];
 }
 
 /** Recently completed cleans, newest first, with the unit name embedded. */
@@ -241,7 +349,7 @@ export async function listRecentCleans(limit = 8): Promise<RecentClean[]> {
   const sb = getSupabase();
   const { data, error } = await sb
     .from("clean_log")
-    .select("completed_at, staff_name, parking_ok, linens_ok, units(name)")
+    .select("completed_at, staff_name, parking_ok, linens_ok, flagged_items, units(name)")
     .order("completed_at", { ascending: false })
     .limit(limit);
   if (error) throw new Error(error.message);
@@ -251,6 +359,7 @@ export async function listRecentCleans(limit = 8): Promise<RecentClean[]> {
       staff_name: string | null;
       parking_ok: boolean | null;
       linens_ok: boolean | null;
+      flagged_items?: string[] | null;
       units: { name: string } | { name: string }[] | null;
     };
     const unit = Array.isArray(row.units) ? row.units[0] : row.units;
@@ -259,9 +368,54 @@ export async function listRecentCleans(limit = 8): Promise<RecentClean[]> {
       staff_name: row.staff_name,
       parking_ok: row.parking_ok,
       linens_ok: row.linens_ok,
+      flagged_items: Array.isArray(row.flagged_items) ? row.flagged_items : [],
       unit_name: unit?.name ?? null,
     };
   });
+}
+
+export interface UnitCleanSummary {
+  count: number;
+  last: string;
+  who: string | null;
+}
+
+/** Every unit's clean history in one read: how many, the last one, by whom.
+ *  The transition view and Home's headline are built from this. */
+export async function cleanSummaryByUnit(): Promise<Map<string, UnitCleanSummary>> {
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from("clean_log")
+    .select("unit_id, completed_at, staff_name")
+    .order("completed_at", { ascending: false })
+    .limit(10000);
+  if (error) throw new Error(error.message);
+  const out = new Map<string, UnitCleanSummary>();
+  for (const r of (data ?? []) as { unit_id: string | null; completed_at: string; staff_name: string | null }[]) {
+    if (!r.unit_id) continue;
+    const cur = out.get(r.unit_id);
+    if (cur) cur.count += 1;
+    else out.set(r.unit_id, { count: 1, last: r.completed_at, who: r.staff_name });
+  }
+  return out;
+}
+
+/** One unit's cadence from its clean log, to set beside a turnover override. */
+export async function measuredTurnoverForUnit(
+  unitId: string,
+  weeks = 8,
+): Promise<{ weeks: number; cleans: number; perWeek: number }> {
+  const sb = getSupabase();
+  const since = new Date(Date.now() - weeks * 7 * 86_400_000).toISOString();
+  const { data, error } = await sb
+    .from("clean_log")
+    .select("id")
+    .eq("unit_id", unitId)
+    .gte("completed_at", since)
+    .limit(1000);
+  if (error) throw new Error(error.message);
+  const cleans = (data ?? []).length;
+  return { weeks, cleans, perWeek: cleans / weeks };
 }
 
 /** Every unit one person has ever cleaned, most recent first, no repeats. */

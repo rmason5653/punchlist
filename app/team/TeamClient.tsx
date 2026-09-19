@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AppUser } from "@/lib/types";
-import { Pill } from "@/app/components/ui";
+import { Pill, formatWhen } from "@/app/components/ui";
 import Menu from "@/app/components/Menu";
 import { useConfirm } from "@/app/components/ConfirmSheet";
 import { useToast } from "@/app/components/Toast";
@@ -368,6 +368,9 @@ export default function TeamClient({ users }: { users: AppUser[] }) {
                       </div>
                       <div className="text-xs text-ink-muted">
                         {[u.phone, u.email].filter(Boolean).join(" · ") || "no contact details"}
+                        {pending && !disabled && (
+                          <span> · Invited {formatWhen(u.created_at)}, never opened</span>
+                        )}
                       </div>
                     </div>
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { slackConfigured, sendSlack } from "@/lib/slack";
 import { buildDigest } from "@/lib/digest";
+import { markDigestPosted } from "@/lib/inventory";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export async function GET(req: Request) {
     const digest = await buildDigest(origin);
     if (!digest.anyIssues) return NextResponse.json({ ok: true, skipped: "all good" });
     await sendSlack(digest.slackText);
+    await markDigestPosted();
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 });

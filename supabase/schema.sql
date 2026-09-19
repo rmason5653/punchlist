@@ -32,6 +32,8 @@ create table if not exists units (
   -- Hostaway listing id, linking this unit to the master units list in the
   -- Ops database (core.units). Nullable; Par itself does not read it yet.
   hostaway_listing_id  text,
+  -- Set when a unit leaves the portfolio: hidden from every list, history kept.
+  retired_at           timestamptz,
   created_at           timestamptz not null default now()
 );
 create unique index if not exists units_hostaway_listing_id_key
@@ -43,6 +45,7 @@ create table if not exists settings (
   default_turnover_frequency int     not null default 3,
   buffer_turnovers           int     not null default 1,
   central_buffer             numeric not null default 2,
+  last_digest_at             timestamptz,                -- when the Slack summary last posted
   updated_at                 timestamptz not null default now(),
   constraint settings_singleton check (id = 1)
 );
@@ -141,7 +144,8 @@ create table if not exists clean_log (
   unit_id      uuid references units(unit_id) on delete cascade,
   staff_name   text,
   parking_ok   boolean,
-  linens_ok    boolean
+  linens_ok    boolean,
+  flagged_items text[] not null default '{}'   -- consumables flagged on this clean
 );
 
 create index if not exists consumable_par_unit_idx on consumable_par (unit_id);
@@ -312,7 +316,15 @@ begin
     ('Lenox Park 9205', 'Lenox Park', 60, 'None', false, 'na'),
     ('Riviera 105', 'Riviera', 61, '2 passes', true, 'ok'),
     ('Riviera 203', 'Riviera', 62, '1 pass', true, 'ok'),
-    ('Riviera 208', 'Riviera', 63, '1 pass', true, 'ok');
+    ('Riviera 208', 'Riviera', 63, '1 pass', true, 'ok'),
+    -- Added after launch: Frank (Jul 2026) and the four from the master list (Sep 2026).
+    ('Frank 405', 'Frank', 51, '1 pass', true, 'ok'),
+    ('Frank 512', 'Frank', 52, '1 pass', true, 'ok'),
+    ('Frank 812', 'Frank', 53, '1 pass', true, 'ok'),
+    ('Art House 201', 'Art House', 3, 'None', false, 'na'),
+    ('Waites 205', 'Waites', 57, 'None', false, 'na'),
+    ('Waites 206', 'Waites', 58, 'None', false, 'na'),
+    ('Waites 401', 'Waites', 59, 'None', false, 'na');
 
   -- Consumable par — same tier for every unit. current_actual starts at par.
   insert into consumable_par (unit_id, item_name, sort, leave_behind, closet_par, reorder_point, current_actual, fixed_par)
@@ -363,7 +375,9 @@ begin
     ('Highland 1213 I',4,4,1,1,1),('Highland 1213 J',4,4,1,1,1),('Highland 1217 B',4,4,1,1,1),
     ('Highland 1217 C',4,4,1,1,1),('Highland 1217 J',4,4,1,1,1),('Highland 1221 J',4,4,1,1,1),
     ('Lenox Park 9205',4,4,1,1,1),
-    ('Riviera 105',5,5,2,2,1),('Riviera 203',4,4,1,1,1),('Riviera 208',4,4,1,1,1)
+    ('Riviera 105',5,5,2,2,1),('Riviera 203',4,4,1,1,1),('Riviera 208',4,4,1,1,1),
+    ('Frank 405',4,4,1,1,1),('Frank 512',4,4,1,1,1),('Frank 812',4,4,1,1,1),
+    ('Art House 201',5,5,2,2,1),('Waites 205',4,4,1,1,1),('Waites 206',4,4,1,1,1),('Waites 401',5,5,2,2,1)
   ) as p(name,bath,wash,hand,mk,kit) on p.name = u.name
   cross join (values ('bath_towel',1),('washcloth',2),('hand_towel',3),('makeup_towel',4),('kitchen_towel',5)) as t(linen_type,sort);
 
@@ -406,5 +420,8 @@ begin
     ('3-in-1',      'consumable', 12, 0, 4, 12, true);
 
   -- Compute calculated consumable par + central targets from the inputs.
+  -- Frank's three units keep a queen pullout couch (bedding bagged in the closet).
+  update units set has_pullout = true where name in ('Frank 405', 'Frank 512', 'Frank 812');
+
   perform recalc_par();
 end $$;

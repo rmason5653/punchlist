@@ -29,6 +29,10 @@ export interface Unit {
   // are tracked.
   has_pullout: boolean;
   rollaway_beds: number;
+  /** Set when the unit leaves the portfolio; hidden from every list, history kept. */
+  retired_at?: string | null;
+  /** Link to the master units list (Ops database) by Hostaway listing id. */
+  hostaway_listing_id?: string | null;
 }
 
 /** Global inputs that drive the calculated par math. */
@@ -36,6 +40,8 @@ export interface Settings {
   default_turnover_frequency: number;
   buffer_turnovers: number;
   central_buffer: number;
+  /** When the Slack summary last posted, cron or manual. */
+  last_digest_at?: string | null;
 }
 
 /** A consumable item's global leave-behind (drives its calculated par). */

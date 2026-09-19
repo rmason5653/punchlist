@@ -35,7 +35,7 @@ see everything.
 | Screen | Who | What it's for |
 | --- | --- | --- |
 | **Home** | both | Cleaners: find your unit (recent units, pinned search, buildings that fold). Managers: portfolio KPIs and recent cleans first, then the units. |
-| **Unit** (clean flow) | both | Confirm parking, flag consumables that are low, confirm or flag linens, review, record. Items flagged on an earlier clean wait for the restock run; a clean recorded with no signal is saved on the phone and sent later. Managers also get linen par and a pull button here. |
+| **Unit** (clean flow) | both | Confirm parking, flag consumables that are low, confirm or flag linens, review, record. Items flagged on an earlier clean wait for the restock run; a clean recorded with no signal is saved on the phone and sent later. Managers also get linen par, a per-unit turnover override, retire, and a pull button here. |
 | **Restock** | managers | The weekly run: every closet item below par and how many to bring. One tap refills a unit with what the Stockroom actually has and logs each pull; anything short stays on the run. |
 | **Stockroom** | managers | Bulk stock. Reorder is one week of real pulls (last four weeks); par is that × the buffer in Settings. Receive a delivery or adjust a count on any row. |
 | **Linens** | managers | Par vs actual per unit, short units first. Replace a short linen with a logged pull in one tap. |
@@ -43,7 +43,8 @@ see everything.
 | **Parking** | managers | Which units have their passes; mark one missing or present. |
 | **Activity** | managers | Manual stock changes — counts, targets, linen edits — who and when. |
 | **Team** | managers | Add people, send setup links, roles, disable, reset, remove. |
-| **Settings** | managers | The three inputs behind calculated par, bagged-bedding flags per unit, and integrations (Slack summary, invite email). |
+| **Transition** | managers | Which units have had a clean recorded in Par and which haven't yet — the in-house transition, by building. |
+| **Settings** | managers | The three inputs behind calculated par (with the turnover the clean log measures), add and restore units, bagged-bedding flags per unit, and integrations (Slack summary with its last post time, invite email). |
 
 ## Stack
 

@@ -26,6 +26,7 @@ const ADMIN_PATHS = [
   "/linens",
   "/log",
   "/parking",
+  "/transition",
 ];
 
 export async function middleware(req: NextRequest) {

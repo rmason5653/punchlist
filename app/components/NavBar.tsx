@@ -19,6 +19,7 @@ const LINKS = [
   { href: "/guide", label: "Guide", admin: false, more: false, moreForAdmin: true },
   { href: "/activity", label: "Activity", admin: true, more: true },
   { href: "/parking", label: "Parking", admin: true, more: true },
+  { href: "/transition", label: "Transition", admin: true, more: true },
   { href: "/team", label: "Team", admin: true, more: true },
   { href: "/settings", label: "Settings", admin: true, more: true },
 ];

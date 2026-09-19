@@ -1,7 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getUnit, listConsumables, listLinens } from "@/lib/inventory";
-import { Container, SetupNotice } from "@/app/components/ui";
+import {
+  getSettings,
+  getUnit,
+  listConsumables,
+  listLinens,
+  measuredTurnoverForUnit,
+} from "@/lib/inventory";
+import { Container, Pill, SetupNotice, formatWhen } from "@/app/components/ui";
+import UnitAdmin from "./UnitAdmin";
 import PullDialog from "@/app/components/PullDialog";
 import CleanFlow from "./CleanFlow";
 import LinenEditor from "./LinenEditor";
@@ -39,6 +46,12 @@ export default async function UnitPage({
       getViewer(),
     ]);
     const admin = viewer?.role === "admin";
+    const retired = !!unit.retired_at;
+    // Manager-only extras: the global turnover default and this unit's own
+    // cadence, for the override control.
+    const [settings, measured] = admin
+      ? await Promise.all([getSettings(), measuredTurnoverForUnit(unit.unit_id)])
+      : [null, null];
 
     return (
       <Container>
@@ -58,8 +71,17 @@ export default async function UnitPage({
               {unit.name}
             </h1>
           </div>
+          {retired && <Pill tone="neutral">Retired</Pill>}
         </div>
 
+        {retired && (
+          <div className="mt-4 rounded-card border border-line bg-surface-2 px-4 py-3 text-sm text-ink-secondary">
+            Retired {formatWhen(unit.retired_at ?? null)}. It no longer appears in any list or on
+            the restock run; its pulls and cleans stay in the logs.
+          </div>
+        )}
+
+        {!retired && (
         <div className="mt-6">
           <CleanFlow
             unit={unit}
@@ -69,28 +91,41 @@ export default async function UnitPage({
             viewerName={viewer?.name ?? ""}
           />
         </div>
+        )}
 
         {/* The manager's setup tools come after the clean steps: a manager
             cleaning a unit shouldn't scroll past them to start. The bottom
             padding clears the clean flow's sticky bar. */}
-        {admin && (
-          <section className="-mt-16 space-y-3 pb-28">
+        {admin && settings && measured && (
+          <section className={retired ? "mt-6 space-y-3" : "-mt-16 space-y-3 pb-28"}>
             <h2 className="font-display text-sm font-bold uppercase tracking-[0.06em] text-ink-secondary">
               Manager tools
             </h2>
-            <LinenEditor
-              unitId={unit.unit_id}
-              linens={linens}
-              hasPullout={unit.has_pullout}
-              rollawayBeds={unit.rollaway_beds}
-            />
-            <div>
-              <PullDialog
-                label="Pull from Stockroom"
-                variant="ghost"
-                prefill={{ unit_id: unit.unit_id }}
+            {!retired && (
+              <LinenEditor
+                unitId={unit.unit_id}
+                linens={linens}
+                hasPullout={unit.has_pullout}
+                rollawayBeds={unit.rollaway_beds}
               />
-            </div>
+            )}
+            <UnitAdmin
+              unitId={unit.unit_id}
+              name={unit.name}
+              turnover={unit.turnover_frequency}
+              defaultTurnover={settings.default_turnover_frequency}
+              measured={measured}
+              retired={retired}
+            />
+            {!retired && (
+              <div>
+                <PullDialog
+                  label="Pull from Stockroom"
+                  variant="ghost"
+                  prefill={{ unit_id: unit.unit_id }}
+                />
+              </div>
+            )}
           </section>
         )}
       </Container>
